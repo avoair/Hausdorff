@@ -3,7 +3,7 @@
 import Mathlib.Tactic
 
 section
-variable [LinearOrder α]
+variable {α : Type*} [LinearOrder α]
 
 -- End extension ordering on sets. A is an end extension of B iff B is an initial segment of A
 def endext (A B : Set α) := A ⊆ B ∧ ∀ b ∈ (B \ A), ∀ a ∈ A, a < b
@@ -27,7 +27,7 @@ end
 
 abbrev WFs (α : Type*) [LinearOrder α] := {A : Set α // A.WellFoundedOn (· < ·)}
 
-variable [LinearOrder α]
+variable {α : Type*} [LinearOrder α]
 def endext'  (A B : WFs α) := endext A.1 B.1
 local infix:50 " ≼ " => endext'
 

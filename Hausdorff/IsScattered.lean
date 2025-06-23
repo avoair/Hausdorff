@@ -1,0 +1,196 @@
+import Mathlib.Tactic
+import Mathlib.Order.CountableDenseLinearOrder
+import Mathlib.Order.Category.LinOrd
+import Mathlib.Data.Sigma.Order
+import Mathlib.Data.Sigma.Lex
+import Mathlib.Order.Basic
+import Mathlib.Logic.Basic
+import Batteries.Logic
+import Hausdorff.WO_cofinal_subset
+
+
+open Classical
+universe u
+
+/-- the composition of order embeddings is an order embedding -/
+def OrderEmbedding_comp {α β γ: Type*} [Preorder α] [Preorder β] [Preorder γ] (g: β ↪o γ)
+  (f: α ↪o β) : α ↪o γ :=
+  { toFun := g ∘ f
+    inj' := by
+      apply (EmbeddingLike.comp_injective (⇑f) g).mpr f.inj'
+    map_rel_iff' := by
+      intro a b
+      simp}
+
+/-- the composition of order embeddings is an order embedding -/
+lemma Q_CDNE : Countable ℚ ∧ DenselyOrdered ℚ ∧ NoMinOrder ℚ ∧ NoMaxOrder ℚ ∧ Nonempty ℚ := by
+  split_ands
+  · exact Encodable.countable
+  · exact LinearOrderedSemiField.toDenselyOrdered
+  · exact NoBotOrder.to_noMinOrder ℚ
+  · exact NoTopOrder.to_noMaxOrder ℚ
+  · exact instNonemptyOfInhabited
+
+/-- order isomoprhism preserves (order) density -/
+lemma dense_of_iso_from_dense {α β: Type*} [Preorder α] [Preorder β] (h: DenselyOrdered α) :
+  Nonempty (α ≃o β) → DenselyOrdered β := by
+  intro h
+  rcases h with ⟨f⟩
+  constructor
+  intro a b hab
+  rcases h.dense (f.symm a) (f.symm b) (f.symm.lt_iff_lt.mpr hab) with ⟨x, hx⟩
+  use (f x)
+  rw [<-OrderIso.symm_apply_apply f x, f.symm.lt_iff_lt, f.symm.lt_iff_lt] at hx
+  exact hx
+
+/-- order isomorphism preserves unboundedness -/
+lemma unbounded_of_iso_from_unbounded {α β: Type*} [Preorder α] [Preorder β] (h: NoMinOrder α)
+  (h1: NoMaxOrder α): Nonempty (α ≃o β) → NoMinOrder β ∧ NoMaxOrder β := by
+  intro h
+  rcases h with ⟨f⟩
+  constructor
+  · constructor
+    intro a
+    rcases h.exists_lt (f.symm a) with ⟨x, hx⟩
+    use f x
+    rw [<-OrderIso.symm_apply_apply f x, f.symm.lt_iff_lt] at hx
+    exact hx
+  · constructor
+    intro a
+    rcases h1.exists_gt (f.symm a) with ⟨x, hx⟩
+    use f x
+    rw [<-OrderIso.symm_apply_apply f x, f.symm.lt_iff_lt] at hx
+    exact hx
+
+--/////////////////////////////////////////////////////////////////////////////////////////
+/--  Definitions + Lemmas about new definitions -/
+--/////////////////////////////////////////////////////////////////////////////////////////
+
+-- We define scattered from the perspective of Cantor's theorem
+def IsScattered : LinOrd → Prop := fun (X : LinOrd) =>
+  ∀ (S : Set (X.carrier)),
+  let suborder : LinOrd :=
+      ({carrier := S,
+        str := inferInstance})
+  ¬(Countable suborder ∧ DenselyOrdered suborder
+    ∧ NoMinOrder suborder ∧ NoMaxOrder suborder ∧ Nonempty suborder)
+
+/-- The above definition is equivalent to the conventional definition of scattered -/
+lemma Scat_iff_not_embeds_Q (X : LinOrd) : IsScattered X ↔ IsEmpty (ℚ ↪o X) := by
+  constructor
+  · intro h
+    by_contra nonempt
+    -- we show there exists a subset of X isomorphic to ℚ, and prove that subset contradicts
+    -- the scattered-ness of X
+    rcases not_isEmpty_iff.mp nonempt with ⟨f⟩
+    have : ∃ A : Set X.carrier, Nonempty (ℚ ≃o A) := by
+      use ↑(Set.range ⇑f)
+      use @OrderEmbedding.orderIso ℚ X _ _ f
+      exact (@OrderEmbedding.orderIso ℚ X _ _ f).map_rel_iff'
+    rcases this with ⟨A, hA⟩
+    let hA' := hA; rcases hA with ⟨f⟩
+    specialize h A
+    by_contra _
+    apply h
+    simp
+    split_ands
+    · exact @Countable.of_equiv _ _ Q_CDNE.left f
+    · exact dense_of_iso_from_dense Q_CDNE.right.left hA'
+    · exact (unbounded_of_iso_from_unbounded Q_CDNE.right.right.left
+             Q_CDNE.right.right.right.left hA').left
+    · exact (unbounded_of_iso_from_unbounded Q_CDNE.right.right.left
+             Q_CDNE.right.right.right.left hA').right
+    · rcases Q_CDNE.right.right.right.right with ⟨a⟩
+      use f a
+      simp
+  · -- we proceed by contradiction and directly apply Cantor's theorem
+    intro h
+    by_contra contra
+    simp [IsScattered] at contra
+    rcases contra with ⟨A, p1, p2, p3, p4, p5⟩
+    have : Countable ↑A := by exact p1
+    have : Nonempty ↑A := by rcases p5 with ⟨a, ha⟩; use a
+    apply (not_isEmpty_iff.mpr (Order.iso_of_countable_dense ℚ A))
+    by_contra Eiso
+    rcases not_isEmpty_iff.mp Eiso with ⟨f⟩
+    apply (not_nonempty_iff.mpr h)
+    let g : ℚ ↪ X :=
+          { toFun := fun x => f.toFun x
+            inj' := by
+              intro a b h
+              apply OrderIso.injective f
+              exact SetCoe.ext_iff.mp h }
+    use g
+    intro a b
+    simp [g]
+
+lemma Scat_of_iso_to_scat (X : LinOrd) (Y : LinOrd) (f : @OrderIso X Y _ inferInstance)
+  (h : IsScattered Y) : IsScattered X := by
+  rw [Scat_iff_not_embeds_Q X]
+  rw [Scat_iff_not_embeds_Q Y, <-not_nonempty_iff, <-exists_true_iff_nonempty] at h
+  by_contra contra
+  simp at contra
+  rcases contra with ⟨g⟩
+  apply h
+  use OrderEmbedding_comp (OrderIso.toOrderEmbedding f) g
+
+/-- Well orders are scattered -/
+lemma Well_Ord_Scattered (X : LinOrd) : WellFounded X.str.lt → IsScattered X := by
+  intro hwf
+  intro A LO props
+  rcases props.right.right.right.right with ⟨y, hy⟩
+  rcases Decidable.em (Nonempty ↑A) with nonempt | empt
+  · have : A.Nonempty := by
+      rw [Set.nonempty_iff_ne_empty, <- Set.nonempty_iff_ne_empty']
+      exact props.right.right.right.right
+    rcases WellFounded.has_min hwf A this with ⟨lb, hlb⟩
+    rcases (props.right.right.left).exists_lt ⟨lb, hlb.left⟩ with ⟨a, ha⟩
+    apply hlb.right a.1 a.2
+    exact ha
+  · apply empt
+    exact props.right.right.right.right
+
+/-- If X a linear order is scattered, so is its reversal -/
+-- I didnt actually end up using this elsewhere in the file
+lemma Rev_Scattered_of_Scattered (X : LinOrd) : IsScattered X →
+  IsScattered {carrier := X.carrier, str := X.str.swap} := by
+  intro X_Scat
+
+  simp [LinearOrder.swap]
+  intro A A_ord props
+  simp at A --- ?
+
+  apply X_Scat A
+  simp
+  split_ands
+  · exact props.left
+  · constructor
+    intro a b hab
+    rcases props.right.left.dense b a hab with ⟨c, hc⟩
+    use c
+    exact And.intro hc.right hc.left
+  · constructor
+    intro a
+    rcases props.right.right.right.left.exists_gt a with ⟨b, hb⟩
+    use b, hb
+  · constructor
+    intro a
+    rcases props.right.right.left.exists_lt a with ⟨b, hb⟩
+    use b, hb
+  · rcases exists_true_iff_nonempty.mpr props.right.right.right.right with ⟨a, _⟩
+    use a, a.2
+
+/-- Reverse well orders are scattered -/
+lemma swap_of_swap_elim {X : LinOrd}: (X.str.swap).swap = X.str := by
+  ext; rfl
+
+lemma swap_of_swap_elim' {X : LinOrd}: X = {carrier := X, str := (X.str.swap).swap} := by
+  exact rfl
+
+lemma Rev_Well_Ord_Scattered (X : LinOrd) : WellFounded (X.str.swap).lt → IsScattered X := by
+  intro h
+  have p := Rev_Scattered_of_Scattered
+    {carrier := X.carrier, str := X.str.swap}
+    (Well_Ord_Scattered {carrier := X.carrier, str := X.str.swap} h)
+  rw [<-swap_of_swap_elim] at p
+  exact p
