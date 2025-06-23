@@ -302,8 +302,9 @@ def swap_iso_of_iso {L M : LinOrd} (f : L ≃o M) : LinOrd_swap L ≃o LinOrd_sw
   right_inv := by intro x; exact OrderIso.apply_symm_apply f x
   map_rel_iff' := by intro x y; exact f.map_rel_iff'
 
-def iso_of_sigma_partition {L S : LinOrd} (j : S → Set L)
-  (partition : ∀ z : L, ∃! (a : S), z ∈ j a) :
+noncomputable def iso_of_sigma_partition {L S : LinOrd} (j : S → Set L)
+  (partition : ∀ z : L, ∃! (a : S), z ∈ j a)
+  (ordered : ∀ a b, a < b → ∀ a_1 ∈ j a, ∀ b_1 ∈ j b, a_1 < b_1) :
   let J := fun s : S => LinOrd.mk (j s)
   L ≃o dLexOrd S J where
   toFun := fun x => ⟨choose (partition x), ⟨x,(choose_spec (partition x)).left⟩⟩
@@ -315,11 +316,8 @@ def iso_of_sigma_partition {L S : LinOrd} (j : S → Set L)
     apply Sigma.ext_iff.mpr
     constructor
     · simp
-      have : choose (partition x.2) = x.1 := by
-        apply Eq.symm
-        apply (choose_spec (partition x.2)).right _ x.2.2
-      sorry -- cannot apply above because in the goal "J_partition x.2"
-            -- is cast to another type
+      apply Eq.symm
+      apply (choose_spec (partition x.2)).right _ x.2.2
     · simp
       have : HEq x.2.1 x.2 := by sorry
       apply HEq.trans _ this
@@ -335,8 +333,11 @@ def iso_of_sigma_partition {L S : LinOrd} (j : S → Set L)
       rcases h with h | h
       · simp at h
         apply le_of_lt
+        apply ordered _ _ h x _ y
+        apply (choose_spec (partition y)).left
+        apply (choose_spec (partition x)).left
+      · rcases h with ⟨h1, h2⟩
+        simp at h2; simp at h1
         sorry
-        -- have (a b) (h1 : x ≤ a) (h1 : b ≤ y) : a < b → x < y := by sorry
-        -- apply this _ _ _ _ h
-      · sorry
-    · sorry
+    · intro h
+      sorry
