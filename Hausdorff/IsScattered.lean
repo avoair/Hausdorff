@@ -76,7 +76,7 @@ def IsScattered : LinOrd → Prop := fun (X : LinOrd) =>
     ∧ NoMinOrder suborder ∧ NoMaxOrder suborder ∧ Nonempty suborder)
 
 /-- The above definition is equivalent to the conventional definition of scattered -/
-lemma Scat_iff_not_embeds_Q (X : LinOrd) : IsScattered X ↔ IsEmpty (ℚ ↪o X) := by
+lemma scat_iff_not_embeds_Q (X : LinOrd) : IsScattered X ↔ IsEmpty (ℚ ↪o X) := by
   constructor
   · intro h
     by_contra nonempt
@@ -124,10 +124,10 @@ lemma Scat_iff_not_embeds_Q (X : LinOrd) : IsScattered X ↔ IsEmpty (ℚ ↪o X
     intro a b
     simp [g]
 
-lemma Scat_of_iso_to_scat (X : LinOrd) (Y : LinOrd) (f : @OrderIso X Y _ inferInstance)
+lemma scat_of_iso_to_scat (X : LinOrd) (Y : LinOrd) (f : @OrderIso X Y _ inferInstance)
   (h : IsScattered Y) : IsScattered X := by
-  rw [Scat_iff_not_embeds_Q X]
-  rw [Scat_iff_not_embeds_Q Y, <-not_nonempty_iff, <-exists_true_iff_nonempty] at h
+  rw [scat_iff_not_embeds_Q X]
+  rw [scat_iff_not_embeds_Q Y, <-not_nonempty_iff, <-exists_true_iff_nonempty] at h
   by_contra contra
   simp at contra
   rcases contra with ⟨g⟩
@@ -135,7 +135,7 @@ lemma Scat_of_iso_to_scat (X : LinOrd) (Y : LinOrd) (f : @OrderIso X Y _ inferIn
   use OrderEmbedding_comp (OrderIso.toOrderEmbedding f) g
 
 /-- Well orders are scattered -/
-lemma Well_Ord_Scattered (X : LinOrd) : WellFounded X.str.lt → IsScattered X := by
+lemma scat_of_well_founded (X : LinOrd) : WellFounded X.str.lt → IsScattered X := by
   intro hwf
   intro A LO props
   rcases props.right.right.right.right with ⟨y, hy⟩
@@ -152,7 +152,7 @@ lemma Well_Ord_Scattered (X : LinOrd) : WellFounded X.str.lt → IsScattered X :
 
 /-- If X a linear order is scattered, so is its reversal -/
 -- I didnt actually end up using this elsewhere in the file
-lemma Rev_Scattered_of_Scattered (X : LinOrd) : IsScattered X →
+lemma rev_scattered_of_scattered (X : LinOrd) : IsScattered X →
   IsScattered {carrier := X.carrier, str := X.str.swap} := by
   intro X_Scat
 
@@ -187,10 +187,10 @@ lemma swap_of_swap_elim {X : LinOrd}: (X.str.swap).swap = X.str := by
 lemma swap_of_swap_elim' {X : LinOrd}: X = {carrier := X, str := (X.str.swap).swap} := by
   exact rfl
 
-lemma Rev_Well_Ord_Scattered (X : LinOrd) : WellFounded (X.str.swap).lt → IsScattered X := by
+lemma scat_of_rev_well_founded (X : LinOrd) : WellFounded (X.str.swap).lt → IsScattered X := by
   intro h
-  have p := Rev_Scattered_of_Scattered
+  have p := rev_scattered_of_scattered
     {carrier := X.carrier, str := X.str.swap}
-    (Well_Ord_Scattered {carrier := X.carrier, str := X.str.swap} h)
+    (scat_of_well_founded {carrier := X.carrier, str := X.str.swap} h)
   rw [<-swap_of_swap_elim] at p
   exact p
