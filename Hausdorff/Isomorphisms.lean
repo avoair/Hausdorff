@@ -1,23 +1,20 @@
 import Mathlib.Tactic
-import Mathlib.Order.CountableDenseLinearOrder
 import Mathlib.Order.Category.LinOrd
 import Mathlib.Data.Sigma.Order
 import Mathlib.Data.Sigma.Lex
-import Mathlib.Order.Basic
-import Mathlib.Logic.Basic
-import Batteries.Logic
-import Hausdorff.WO_cofinal_subset
-import Hausdorff.IsScattered
 
 
 open Classical
 universe u
 
-
 abbrev dLexOrd (α : LinOrd) (β : α.carrier → LinOrd) : LinOrd :=
   { carrier := Σₗ w, (β w), str := Sigma.Lex.linearOrder }
 
 abbrev LinOrd_swap (α : LinOrd) : LinOrd := { carrier := α, str := α.str.swap }
+
+lemma LinOrd_swap_swap {L : LinOrd}: LinOrd_swap (LinOrd_swap L) = L := by
+  simp [LinOrd_swap]
+  trivial
 
 def embed_dlexord {α : LinOrd} {β : α.carrier → LinOrd} (a : α.carrier)
     (B : Set (dLexOrd α β)) (h : ∀ b ∈ B, b.1 = a) :
@@ -40,28 +37,27 @@ def embed_dlexord {α : LinOrd} {β : α.carrier → LinOrd} (a : α.carrier)
 
 def initial_segment_iso {L M : LinOrd} (f : L ≃o M) (a : L) :
   ({carrier := {x | x ≤ a}, str := inferInstance} : LinOrd) ≃o
-    ({carrier := {x | x ≤ f a}, str := inferInstance} : LinOrd) := by
-  use {
-    toFun := fun x => ⟨f x, by simp ; exact x.2⟩
-    invFun := fun x => ⟨f.symm x, by
-      apply f.le_iff_le.mp
-      simp
-      exact x.2⟩
-    left_inv := by intro x ; simp
-    right_inv := by intro x ; simp
-  }
-  intro x y
-  simp
+    ({carrier := {x | x ≤ f a}, str := inferInstance} : LinOrd) where
+  toFun := fun x => ⟨f x, by simp ; exact x.2⟩
+  invFun := fun x => ⟨f.symm x, by
+    apply f.le_iff_le.mp
+    simp; exact x.2⟩
+  left_inv := by intro _ ; simp
+  right_inv := by intro _ ; simp
+  map_rel_iff' := by intro _ ; simp
+
+def coeEmb {L : LinOrd.{u}} (A : Set L) : A ↪o L where
+  toFun := fun x => x
+  inj' := by intro _ _ h; simp at h; exact SetCoe.ext h
+  map_rel_iff' := by simp
 
 def subtype_iso {L : LinOrd.{u}} (A B : Set L) (h1 : B ⊆ A) :
-  (LinOrd.mk {x : A | x.1 ∈ B}) ≃o (LinOrd.mk B)  := by
-  use {
-    toFun := fun x => ⟨x.1.1, x.2⟩
-    invFun := fun x => ⟨⟨x.1, h1 x.2⟩, x.2⟩
-    left_inv := by intro x ; simp
-    right_inv := by intro x ; simp
-  }
-  intro x y; simp
+  (LinOrd.mk {x : A | x.1 ∈ B}) ≃o (LinOrd.mk B) where
+  toFun := fun x => ⟨x.1.1, x.2⟩
+  invFun := fun x => ⟨⟨x.1, h1 x.2⟩, x.2⟩
+  left_inv := by intro _ ; simp
+  right_inv := by intro _ ; simp
+  map_rel_iff' := by intro _; simp
 
 inductive Two : Type u where
   | zero
@@ -90,10 +86,8 @@ noncomputable instance : LinearOrder Two where
     <;> (intro a b; trivial)
   le_total := by
     intro x y; rcases x, y with ⟨x | x, y | y⟩
-    <;> (simp[le])
+    <;> (simp [le])
   toDecidableLE := decRel le
-  -- min_def := sorry -- cn maybe leave out
-  -- max_def := sorry
   compare_eq_compareOfLessAndEq := by
     intro x y; rcases x, y with ⟨x | x, y | y⟩
     <;> trivial
@@ -130,7 +124,6 @@ deriving Inhabited
 namespace Three
 
 def le : Three → Three → Prop
-  | zero, one => True
   | zero, _ => True
   | one, zero => False
   | one, _ => True
@@ -183,40 +176,18 @@ lemma finite : Finite Three := by
 
 end Three
 
--- abbrev Three : LinOrd.{u} := {carrier := ULift.{u} (Fin 3), str := inferInstance}
 
--- lemma Three_def (x : Three) : x = 0 ∨ x = 1 ∨ x = 2 := by
---   match x with
---   | 0 => simp
---   | 1 => simp
---   | 2 => simp
+def g {L : LinOrd} (M N: Set L) : Two → Set L
+    | Two.zero => M
+    | Two.one => N
 
 def g' (M N: LinOrd) : Two → LinOrd
     | Two.zero => M
     | Two.one => N
 
--- def g'' (K M N: LinOrd) : Three → LinOrd
---     | ⟨0, _⟩ => K
---     | ⟨1, _⟩ => M
---     | ⟨2, _⟩ => N
-
--- lemma g''0 {K M N : LinOrd}
---   (y : ({ carrier := Σₗ (w : ↑Three), (g'' K M N w), str := inferInstance } : LinOrd)) :
---   y.1 = 0 → g'' K M N y.1 = K := by intro h ; simp only [g'', h]
-
--- lemma g''1 {K M N : LinOrd}
---   (y : ({ carrier := Σₗ (w : ↑Three), (g'' K M N w), str := inferInstance } : LinOrd)) :
---   y.1 = 1 → g'' K M N y.1 = M := by intro h ; simp only [g'', h]
-
--- lemma g''2 {K M N : LinOrd}
---   (y : ({ carrier := Σₗ (w : ↑Three), (g'' K M N w), str := inferInstance } : LinOrd)) :
---   y.1 = 2 → g'' K M N y.1 = N := by intro h ; simp only [g'', h]
-
-set_option maxHeartbeats 1000000
 noncomputable def Two_iso_helper {L : LinOrd.{u}} (A B C : Set L)
   (h1 : A = B ∪ C) (h2 : ∀ c ∈ C, ∀ b ∈ B, b < c) :
-  LinOrd.mk A ≃o ({ carrier := Σₗ (w : Two), (g' (LinOrd.mk B) (LinOrd.mk C) w),
-                    str := Sigma.Lex.linearOrder } : LinOrd) where
+  LinOrd.mk A ≃o dLexOrd Two.L (g' (LinOrd.mk B) (LinOrd.mk C)) where
   toFun := fun ⟨x, hx⟩ =>
     if h : x ∈ B then ⟨Two.zero, ⟨x, h⟩⟩
     else ⟨Two.one, ⟨x, or_iff_not_imp_right.mp (subset_of_eq h1 hx).symm h⟩⟩
@@ -284,7 +255,9 @@ def Sigma_swap_alt_def {L : LinOrd} (i : L → LinOrd) :
   right_inv := congrFun rfl
   map_rel_iff' := by
     intro a b
-    simp
+    --- a bit ugly
+    have (ta tb : L) (a : (i ta)) (b : i tb) (h1 : ta = tb) (h2 : tb = ta) :
+      h1 ▸ a ≥ b ↔ a ≥ (h2 ▸ b) := by subst ta ; simp
     constructor
     · intro h
       change (dLexOrd L i).str.le b a
@@ -295,11 +268,17 @@ def Sigma_swap_alt_def {L : LinOrd} (i : L → LinOrd) :
       · rcases h1 with ⟨h2, h3⟩
         rw [Sigma.Lex.le_def]; right
         use h2.symm
-        simp [h2]
-        sorry
+        change ((Iff.of_eq (Eq.refl (a.fst = b.fst))).mpr h2) ▸ a.snd ≥ b.snd at h3
+        apply (this a.1 b.1 a.2 b.2 _ _).mp h3
     · intro h
       change (dLexOrd L i).str.le b a at h
-      sorry
+      simp [Sigma.Lex.le_def] at *
+      rcases h with h1 | h1
+      · left; exact h1
+      · rcases h1 with ⟨h2, h3⟩
+        right; use h2.symm
+        change ((Iff.of_eq (Eq.refl (b.fst = a.fst))).mpr h2) ▸ a.snd ≥ b.snd
+        apply (this a.1 b.1 a.2 b.2 _ _).mpr h3
 
 def swap_iso_of_iso {L M : LinOrd} (f : L ≃o M) : LinOrd_swap L ≃o LinOrd_swap M where
   toFun := fun x => f x
@@ -353,9 +332,6 @@ noncomputable def iso_of_sigma_partition {L S : LinOrd} (j : S → Set L)
         apply (choose_spec (partition x)).left
       · rcases h with ⟨h1, h2⟩
         simp at h2; simp at h1
-        --generalize ht : choose (partition x) = t at *
-        --subst t
-        --simp at h2
         exact (helper
             (choose (partition x)) (choose (partition y)) h1 (choose_spec (partition x)).left
             (choose_spec (partition y)).left).mp h2
@@ -377,14 +353,3 @@ noncomputable def iso_of_sigma_partition {L S : LinOrd} (j : S → Set L)
             (choose_spec (partition y)).left).mpr h
       · subst x
         right; simp
-
--- noncomputable def Two_iso_helper' {L : LinOrd.{u}} (A B C : Set L)
---   (h1 : A = B ∪ C) (h2 : ∀ c ∈ C, ∀ b ∈ B, b < c) :
---   LinOrd.mk A ≃o ({ carrier := Σₗ (w : Two), (g' (LinOrd.mk B) (LinOrd.mk C) w),
---                     str := Sigma.Lex.linearOrder } : LinOrd) := by
---   let g : Two.L.{u} → Set L
---     | Two.zero => B
---     | Two.one => C
---   let p := iso_of_sigma_partition g sorry sorry
---   simp at p
---   sorry

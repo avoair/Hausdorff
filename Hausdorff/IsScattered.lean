@@ -4,10 +4,7 @@ import Mathlib.Order.Category.LinOrd
 import Mathlib.Data.Sigma.Order
 import Mathlib.Data.Sigma.Lex
 import Mathlib.Order.Basic
-import Mathlib.Logic.Basic
-import Batteries.Logic
 import Hausdorff.WO_cofinal_subset
-
 
 open Classical
 universe u
@@ -21,15 +18,6 @@ def OrderEmbedding_comp {α β γ: Type*} [Preorder α] [Preorder β] [Preorder 
     map_rel_iff' := by
       intro a b
       simp}
-
-/-- the composition of order embeddings is an order embedding -/
-lemma Q_CDNE : Countable ℚ ∧ DenselyOrdered ℚ ∧ NoMinOrder ℚ ∧ NoMaxOrder ℚ ∧ Nonempty ℚ := by
-  split_ands
-  · exact Encodable.countable
-  · exact LinearOrderedSemiField.toDenselyOrdered
-  · exact NoBotOrder.to_noMinOrder ℚ
-  · exact NoTopOrder.to_noMaxOrder ℚ
-  · exact instNonemptyOfInhabited
 
 /-- order isomoprhism preserves (order) density -/
 lemma dense_of_iso_from_dense {α β: Type*} [Preorder α] [Preorder β] (h: DenselyOrdered α) :
@@ -88,21 +76,19 @@ lemma scat_iff_not_embeds_Q (X : LinOrd) : IsScattered X ↔ IsEmpty (ℚ ↪o X
       use @OrderEmbedding.orderIso ℚ X _ _ f
       exact (@OrderEmbedding.orderIso ℚ X _ _ f).map_rel_iff'
     rcases this with ⟨A, hA⟩
-    let hA' := hA; rcases hA with ⟨f⟩
-    specialize h A
-    by_contra _
-    apply h
-    simp
+    let hA' := hA
+    rcases hA with ⟨f⟩
+    by_contra
+    apply h A
     split_ands
-    · exact @Countable.of_equiv _ _ Q_CDNE.left f
-    · exact dense_of_iso_from_dense Q_CDNE.right.left hA'
-    · exact (unbounded_of_iso_from_unbounded Q_CDNE.right.right.left
-             Q_CDNE.right.right.right.left hA').left
-    · exact (unbounded_of_iso_from_unbounded Q_CDNE.right.right.left
-             Q_CDNE.right.right.right.left hA').right
-    · rcases Q_CDNE.right.right.right.right with ⟨a⟩
-      use f a
-      simp
+    · exact @Countable.of_equiv _ _ (@Encodable.countable ℚ _) f
+    · exact dense_of_iso_from_dense LinearOrderedSemiField.toDenselyOrdered hA'
+    · exact (unbounded_of_iso_from_unbounded (NoBotOrder.to_noMinOrder ℚ)
+             (NoTopOrder.to_noMaxOrder ℚ) hA').left
+    · exact (unbounded_of_iso_from_unbounded (NoBotOrder.to_noMinOrder ℚ)
+             (NoTopOrder.to_noMaxOrder ℚ) hA').right
+    · rcases @instNonemptyOfInhabited ℚ _ with ⟨a⟩
+      use f a; simp
   · -- we proceed by contradiction and directly apply Cantor's theorem
     intro h
     by_contra contra
