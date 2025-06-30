@@ -9,7 +9,7 @@ import Hausdorff.WO_cofinal_subset
 open Classical
 universe u
 
-/-- the composition of order embeddings is an order embedding -/
+/-- The composition of order embeddings is an order embedding -/
 def OrderEmbedding_comp {α β γ: Type*} [Preorder α] [Preorder β] [Preorder γ] (g: β ↪o γ)
   (f: α ↪o β) : α ↪o γ :=
   { toFun := g ∘ f
@@ -19,7 +19,7 @@ def OrderEmbedding_comp {α β γ: Type*} [Preorder α] [Preorder β] [Preorder 
       intro a b
       simp}
 
-/-- order isomoprhism preserves (order) density -/
+/-- Order isomoprhism preserves (order) density -/
 lemma dense_of_iso_from_dense {α β: Type*} [Preorder α] [Preorder β] (h: DenselyOrdered α) :
   Nonempty (α ≃o β) → DenselyOrdered β := by
   intro h
@@ -31,7 +31,7 @@ lemma dense_of_iso_from_dense {α β: Type*} [Preorder α] [Preorder β] (h: Den
   rw [<-OrderIso.symm_apply_apply f x, f.symm.lt_iff_lt, f.symm.lt_iff_lt] at hx
   exact hx
 
-/-- order isomorphism preserves unboundedness -/
+/-- Order isomorphism preserves unboundedness -/
 lemma unbounded_of_iso_from_unbounded {α β: Type*} [Preorder α] [Preorder β] (h: NoMinOrder α)
   (h1: NoMaxOrder α): Nonempty (α ≃o β) → NoMinOrder β ∧ NoMaxOrder β := by
   intro h
@@ -51,10 +51,10 @@ lemma unbounded_of_iso_from_unbounded {α β: Type*} [Preorder α] [Preorder β]
     exact hx
 
 --/////////////////////////////////////////////////////////////////////////////////////////
-/--  Definitions + Lemmas about new definitions -/
+--  Definitions + Lemmas about new definitions -
 --/////////////////////////////////////////////////////////////////////////////////////////
 
--- We define scattered from the perspective of Cantor's theorem
+/-- We define scattered from the perspective of Cantor's theorem -/
 def IsScattered : LinOrd → Prop := fun (X : LinOrd) =>
   ∀ (S : Set (X.carrier)),
   let suborder : LinOrd :=
@@ -63,7 +63,8 @@ def IsScattered : LinOrd → Prop := fun (X : LinOrd) =>
   ¬(Countable suborder ∧ DenselyOrdered suborder
     ∧ NoMinOrder suborder ∧ NoMaxOrder suborder ∧ Nonempty suborder)
 
-/-- The above definition is equivalent to the conventional definition of scattered -/
+/-- The above definition is equivalent to the conventional definition
+    of scattered via embedding of the rationals-/
 lemma scat_iff_not_embeds_Q (X : LinOrd) : IsScattered X ↔ IsEmpty (ℚ ↪o X) := by
   constructor
   · intro h
@@ -110,7 +111,8 @@ lemma scat_iff_not_embeds_Q (X : LinOrd) : IsScattered X ↔ IsEmpty (ℚ ↪o X
     intro a b
     simp [g]
 
-lemma scat_of_iso_to_scat (X : LinOrd) (Y : LinOrd) (f : @OrderIso X Y _ inferInstance)
+/-- Any order isomoprhic to a scattered order is scattered -/
+lemma scat_of_iso_to_scat (X : LinOrd) (Y : LinOrd) (f : X ≃o Y)
   (h : IsScattered Y) : IsScattered X := by
   rw [scat_iff_not_embeds_Q X]
   rw [scat_iff_not_embeds_Q Y, <-not_nonempty_iff, <-exists_true_iff_nonempty] at h
@@ -137,7 +139,6 @@ lemma scat_of_well_founded (X : LinOrd) : WellFounded X.str.lt → IsScattered X
     exact props.right.right.right.right
 
 /-- If X a linear order is scattered, so is its reversal -/
--- I didnt actually end up using this elsewhere in the file
 lemma rev_scattered_of_scattered (X : LinOrd) : IsScattered X →
   IsScattered {carrier := X.carrier, str := X.str.swap} := by
   intro X_Scat
@@ -169,9 +170,6 @@ lemma rev_scattered_of_scattered (X : LinOrd) : IsScattered X →
 /-- Reverse well orders are scattered -/
 lemma swap_of_swap_elim {X : LinOrd}: (X.str.swap).swap = X.str := by
   ext; rfl
-
-lemma swap_of_swap_elim' {X : LinOrd}: X = {carrier := X, str := (X.str.swap).swap} := by
-  exact rfl
 
 lemma scat_of_rev_well_founded (X : LinOrd) : WellFounded (X.str.swap).lt → IsScattered X := by
   intro h

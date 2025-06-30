@@ -13,21 +13,20 @@ open Classical
 universe u
 
 /-- Hausdorff's recursive definition of scattered -/
-inductive Scattered_ind_prop : LinOrd → Prop
-| base {L : LinOrd} (x : L.carrier) (h : {x} = @Set.univ L.carrier) : Scattered_ind_prop L
+inductive IScattered_prop : LinOrd → Prop
+| base {L : LinOrd} (x : L.carrier) (h : {x} = @Set.univ L.carrier) : IScattered_prop L
 | lex_sum (WO: LinOrd)
-  (hwo : WellFounded WO.str.lt
-        ∨ WellFounded (WO.str.swap).lt) ---
+  (hwo : WellFounded WO.str.lt ∨ WellFounded (WO.str.swap).lt)
   (f: WO.carrier → LinOrd)
-  (h : ∀ w, Scattered_ind_prop (f w))
+  (h : ∀ w, IScattered_prop (f w))
   (L : LinOrd)
-  (h : L ≃o ({carrier := Σₗ w, (f w).carrier,
-              str := Sigma.Lex.linearOrder} : LinOrd)): Scattered_ind_prop L
+  (h : L ≃o dLexOrd WO f): IScattered_prop L
 
-lemma iscat_of_empty (X : LinOrd.{u}) (empt : IsEmpty X) : Scattered_ind_prop.{u, u} X := by
-  apply Scattered_ind_prop.lex_sum.{u,u} X (Or.inl (wellFounded_of_isEmpty X.str.lt)) (fun x => X)
+/-- Empty LinOrds are iscat-/
+lemma iscat_of_empty (X : LinOrd.{u}) (empt : IsEmpty X) : IScattered_prop.{u, u} X := by
+  apply IScattered_prop.lex_sum.{u,u} X (Or.inl (wellFounded_of_isEmpty X.str.lt)) (fun x => X)
   simp
-  have : IsEmpty ({ carrier := Σₗ (w : ↑X), ↑X, str := Sigma.Lex.linearOrder } : LinOrd) := by
+  have : IsEmpty (dLexOrd X (fun x => X)) := by
     apply IsEmpty.mk
     intro a; apply (@IsEmpty.exists_iff _ empt).mp
     use a.1
@@ -36,19 +35,16 @@ lemma iscat_of_empty (X : LinOrd.{u}) (empt : IsEmpty X) : Scattered_ind_prop.{u
   apply (@IsEmpty.exists_iff _ empt).mp
   use a
 
-def IsCoinitial {α : Type*} [LE α] (s : Set α) : Prop :=
-  ∀ x, ∃ y ∈ s, y ≤ x
-
-/-- a helper fxn for the next theorem: a lienar order α is well-ordered iff for any x, every set containing x is bounded below-/
+/-- a helper fxn for the next theorem: a linear order is well-ordered iff for any x,
+    every set containing x is bounded below-/
 private lemma WO_iff_lem {α : Type*} [r : LinearOrder α]:
   IsWellFounded α r.lt ↔ ∀ x, ∀ A : Set α, x ∈ A → ∃ lb ∈ A, ∀ a ∈ A, r.le lb a := by
   constructor
-  · intro hwf x
+  · intro _ x
     apply IsWellFounded.induction r.lt x
-    intro x IH A
-    intro hxA
-    rcases Classical.em (∀ a ∈ A, r.le x a) with hxlb | hnxlb
-    · use x
+    intro y IH A _
+    rcases Classical.em (∀ a ∈ A, r.le y a) with hxlb | hnxlb
+    · use y
     · push_neg at hnxlb
       rcases hnxlb with ⟨a, ha⟩
       exact IH a (ha.right) A ha.left
@@ -63,119 +59,91 @@ private lemma WO_iff_lem {α : Type*} [r : LinearOrder α]:
     apply Acc.intro
     intro y hy
     by_contra hyacc
-    apply not_lt_of_ge (LE.le.ge (hlb.right y hyacc))
-    exact hy
+    apply not_lt_of_ge (LE.le.ge (hlb.right y hyacc)) hy
 
 /-- A linear order is well-founded iff every subset is bounded below -/
 theorem WO_iff_subsets_bdd_below {α : Type*} [r : LinearOrder α]:
   IsWellFounded α r.lt ↔ ∀ (A: Set α), A.Nonempty → ∃ lb ∈ A, ∀ x ∈ A, r.le lb x := by
+  rw [WO_iff_lem]
   constructor
-  · rw [WO_iff_lem]
-    intro h A hA
+  · intro h A hA
     rcases hA with ⟨x, hx⟩
     exact h x A hx
-  · rw [WO_iff_lem]
-    intro h x A hA
+  · intro h x A hA
     apply h A
-    rw [Set.nonempty_def]
     use x
 
-lemma iscat_of_well_founded (X: LinOrd.{u}) (h : WellFounded X.str.lt): Scattered_ind_prop.{u,u} X := by
-  let L : LinOrd := { carrier := Σₗ (w : ↑X), (fun w => (↑{ carrier := PUnit.{u+1}, str := inferInstance } : LinOrd)) w,
-                      str := Sigma.Lex.linearOrder }
-  have : X ≃o L := by
-    let g : X → L := fun x => ⟨x, PUnit.unit⟩
-    use {
-      toFun := fun x => ⟨x, PUnit.unit⟩
-      invFun := fun ⟨a, b⟩ => a
-      left_inv := by intro a ; simp
-      right_inv := by intro a ; constructor
-    }
-    intro a b
-    simp
-    rw [Sigma.Lex.le_def]
-    constructor
-    · intro h1
-      rcases h1 with h1 | h1
-      · simp at h1; exact le_of_lt h1
-      · simp at h1;  exact le_of_eq h1
-    · intro h1
-      rcases lt_or_eq_of_le h1 with h1 | h1
-      · left; simp; exact h1
-      · right; use h1
-  let p := (Scattered_ind_prop.lex_sum X (Or.inl h)
-    (fun x => {carrier := PUnit, str := inferInstance})
-    (fun x => by
+/-- Well founded orders are iscat -/
+lemma iscat_of_well_founded (X: LinOrd.{u}) (h : WellFounded X.str.lt) : IScattered_prop.{u,u} X := by
+  let L := dLexOrd X (fun w => LinOrd.mk PUnit.{u+1})
+  let f : X ≃o L := {
+    toFun := fun x => ⟨x, PUnit.unit⟩
+    invFun := fun ⟨a, b⟩ => a
+    left_inv := by intro _ ; simp
+    right_inv := by intro _ ; constructor
+    map_rel_iff' := by
+      intro a b
+      rw [Sigma.Lex.le_def]
       simp
-      apply Scattered_ind_prop.base PUnit.unit
-      exact Set.eq_univ_of_univ_subset fun ⦃a⦄ => congrFun rfl) X this)
-
-  apply Scattered_ind_prop.lex_sum X (Or.inl h)
-      (fun x => {carrier := PUnit, str := inferInstance})
+      exact Iff.symm le_iff_lt_or_eq }
+  exact IScattered_prop.lex_sum X (Or.inl h)
+      (fun x => LinOrd.mk PUnit)
       (fun x => by
-        simp
-        apply Scattered_ind_prop.base PUnit.unit
-        exact Set.eq_univ_of_univ_subset fun ⦃a⦄ => congrFun rfl) X this
+        apply IScattered_prop.base PUnit.unit
+        exact Set.eq_univ_of_univ_subset fun ⦃a⦄ => congrFun rfl) X f
 
--- lemma iscat_of_singleton {α : LinOrd.{u}} (x : α) :
---   Scattered_ind_prop.{u} {carrier := ({x} : Set α), str := inferInstance} := by
-  -- apply iscat_of_well_founded _
-  --   (@Finite.to_wellFoundedLT
-  --     ({ carrier := ({x} : Set α), str := inferInstance } : LinOrd)
-  --     (Set.finite_singleton x)).1
+/-- Singleton orders are iscat -/
+lemma iscat_of_singleton {α : LinOrd.{u}} (x : α) :
+  IScattered_prop.{u,u} (LinOrd.mk ({x} : Set α)) := by
+  apply iscat_of_well_founded _
+    (@Finite.to_wellFoundedLT (LinOrd.mk ({x} : Set α)) (Set.finite_singleton x)).1
 
-lemma subsingleton_lem (M : Type*) (a : M) (h : {a} = Set.univ) : Subsingleton M := by
-  apply Set.subsingleton_of_univ_subsingleton
-  apply ((Set.subsingleton_iff_singleton _).mpr (Eq.symm h))
-  simp
-
-lemma iscat_of_iso {L M : LinOrd.{u}} (f : @OrderIso M L (M.str.toLE) (L.str.toLE)) (h: Scattered_ind_prop.{u, u} M) :
-  Scattered_ind_prop.{u, u} L := by
+/-- Orders isomorphic to an iscat order are iscat -/
+lemma iscat_of_iso {L M : LinOrd.{u}} (f : @OrderIso M L (M.str.toLE) (L.str.toLE)) (h: IScattered_prop.{u, u} M) :
+  IScattered_prop.{u, u} L := by
   rcases h with ⟨a, h1⟩ | ⟨N, WF_RWF, map, scat_map, _, g⟩
-  · apply Scattered_ind_prop.base (f a)
-    apply @Subsingleton.eq_univ_of_nonempty _ (@Equiv.subsingleton _ _ (f.symm).1 (subsingleton_lem M a h1))
-    simp
-  · apply Scattered_ind_prop.lex_sum.{u} N WF_RWF map scat_map L
+  · apply IScattered_prop.base (f a)
+    apply @Subsingleton.eq_univ_of_nonempty _ ?_
+    · exact Set.singleton_nonempty (f a)
+    · apply @Equiv.subsingleton _ _ (f.symm).1 ?_
+      apply Set.subsingleton_of_univ_subsingleton
+        ((Set.subsingleton_iff_singleton _).mpr (Eq.symm h1))
+      simp
+  · apply IScattered_prop.lex_sum.{u} N WF_RWF map scat_map L
     use OrderIso.trans f.symm g
     exact (OrderIso.trans f.symm g).map_rel_iff
 
---set_option maxHeartbeats 1000000
--- one scattered order ontop of another scattered order is scattered
-lemma iscat_of_layered_iscats (L M N : LinOrd.{u}) (h1 : Scattered_ind_prop.{u, u} M)
-  (h2: Scattered_ind_prop.{u, u} N)
-  (iso : L ≃o ({carrier := Σₗ (w : Two), ((g' M N) w), str := inferInstance } : LinOrd.{u})):
-  Scattered_ind_prop.{u, u} L := by
-  apply Scattered_ind_prop.lex_sum Two.L (Or.inl (@Finite.to_wellFoundedLT _ Two.finite).1) (g' M N)
+/-- One scattered order ontop of another scattered order is scattered -/
+lemma iscat_of_layered_iscats (L M N : LinOrd.{u}) (h1 : IScattered_prop.{u, u} M)
+  (h2: IScattered_prop.{u, u} N)
+  (iso : L ≃o dLexOrd Two.L.{u} (g' M N)) :
+  IScattered_prop.{u, u} L := by
+  apply IScattered_prop.lex_sum Two.L
+    (Or.inl (@Finite.to_wellFoundedLT _ Two.finite).1) (g' M N)
   · intro w
     match w with
     | Two.zero => {simp [g']; exact h1}
     | Two.one => {simp [g']; exact h2}
   · exact iso
 
--- a subset of a inductively scattered order is inductively scattered
-lemma iscat_of_subset {L : LinOrd.{u}} (A : Set L) (h : Scattered_ind_prop.{u, u} L) :
-  Scattered_ind_prop.{u, u} { carrier  := A, str := inferInstance} := by
+/-- A suborder of a iscat order is iscat -/
+lemma iscat_of_subset {L : LinOrd.{u}} (A : Set L) (h : IScattered_prop.{u, u} L) :
+  IScattered_prop.{u, u} (LinOrd.mk A) := by
   induction' h with M m hm WO WF_RWF f f_scat N Niso IH
   · -- base case
     have A_sub: A.Subsingleton := by
       apply @Set.subsingleton_of_subset_singleton _ m A
       rw [hm]; exact Set.subset_univ A
-    rcases Classical.em (Set.Nonempty A) with nonempt | empt
-    · rcases Set.exists_eq_singleton_iff_nonempty_subsingleton.mpr
-        (And.intro nonempt A_sub) with ⟨m', hm'⟩
-      apply Scattered_ind_prop.base (⟨m', by rw[hm']; apply Set.mem_singleton⟩ : A)
+    rcases Set.Subsingleton.eq_empty_or_singleton A_sub with h | h
+    · apply iscat_of_empty _ (Set.isEmpty_coe_sort.mpr h)
+    · rcases h with ⟨m', hm'⟩
+      apply IScattered_prop.base (⟨m', by rw[hm']; apply Set.mem_singleton⟩ : A)
       apply Set.eq_univ_of_image_val_eq
-      simp; exact hm'.symm
-    · apply iscat_of_empty
-      simp
-      exact Set.not_nonempty_iff_eq_empty.mp empt
+      simp; apply hm'.symm
   · -- inductive step
     let B := Niso '' A
-    let A_to_B : ({ carrier := A, str := inferInstance } : LinOrd) ≃o
-                  ({ carrier := B, str := inferInstance } : LinOrd) := OrderIso_restrict Niso A
-
-    let g (w : WO): LinOrd := { carrier := {b | ⟨w, b⟩ ∈ B}, str := inferInstance }
-    let Biso : B ≃o ({ carrier := Σₗ (w : WO), (g w), str := Sigma.Lex.linearOrder } : LinOrd) :=
+    let g (w : WO) := LinOrd.mk {b | ⟨w, b⟩ ∈ B}
+    let Biso : B ≃o dLexOrd WO g :=
       {
         toFun := fun x => ⟨x.1.1, ⟨x.1.2, by simp⟩⟩
         invFun := fun x => ⟨⟨x.1, x.2.1⟩, x.2.2⟩
@@ -185,69 +153,75 @@ lemma iscat_of_subset {L : LinOrd.{u}} (A : Set L) (h : Scattered_ind_prop.{u, u
           rintro ⟨⟨x, hx0⟩, hx⟩ ⟨⟨y, hy0⟩, hy⟩
           simp only [Equiv.coe_fn_mk, Sigma.Lex.le_def, Subtype.mk_le_mk]
           apply or_congr_right
-          constructor <;> { rintro ⟨rfl, h⟩; use rfl, h }
+          constructor <;> ( rintro ⟨rfl, h⟩; use rfl, h )
       }
-    apply iscat_of_iso (OrderIso.trans Biso.symm (A_to_B).symm)
-    apply Scattered_ind_prop.lex_sum WO WF_RWF g
+    apply iscat_of_iso (OrderIso.trans Biso.symm
+      (OrderIso_restrict Niso A).symm)
+    apply IScattered_prop.lex_sum WO WF_RWF g
     · intro w; exact IH w { x | ⟨w, x⟩ ∈ B }
     · rfl
 
+/-- A subset of a suborder which is iscat is iscat-/
 lemma iscat_of_subset' {L : LinOrd.{u}} (A : Set L)
-  (h : Scattered_ind_prop.{u, u} { carrier := A, str := inferInstance}) (B : Set L) (h1 : B ⊆ A) :
-  Scattered_ind_prop.{u, u} (LinOrd.mk B) := by
-  let C : Set ({ carrier := A, str := inferInstance} : LinOrd) := {x | x.1 ∈ B}
-  apply @iscat_of_iso _ { carrier := C, str := inferInstance}
+  (h : IScattered_prop.{u, u} (LinOrd.mk A)) (B : Set L) (h1 : B ⊆ A) :
+  IScattered_prop.{u, u} (LinOrd.mk B) := by
+  let C : Set (LinOrd.mk A) := {x | x.1 ∈ B}
+  apply @iscat_of_iso _ (LinOrd.mk C)
   use subtype_iso A B h1
   intro a b
   simp
-  apply iscat_of_subset _ h
+  exact iscat_of_subset _ h
+
 
 lemma iscat_of_subset'' {L : LinOrd.{u}} (P : L → Prop) (T : L → Prop)
-  (h : Scattered_ind_prop.{u, u} { carrier := {x | P x}, str := inferInstance}) :
-  Scattered_ind_prop.{u, u} { carrier := {x : {x // T x} | P x}, str := inferInstance} := by
-  apply @iscat_of_iso _ { carrier := {x | T x ∧ P x}, str := inferInstance}
-  · use {
+  (h : IScattered_prop.{u, u} (LinOrd.mk {x | P x})) :
+  IScattered_prop.{u, u} (LinOrd.mk {x : {x // T x} | P x}) := by
+  apply @iscat_of_iso _ (LinOrd.mk {x | T x ∧ P x})
+  · exact {
       toFun := fun x => ⟨⟨x.1, x.2.left⟩, x.2.right⟩
       invFun := fun x => ⟨x.1.1, And.intro x.1.2 x.2⟩
       left_inv := by intro _ ; simp
       right_inv := by intro _ ; simp
+      map_rel_iff' := by intro _ _; simp
     }
-    intro _ _; simp
-  · apply iscat_of_subset' _ h _ ?_
+  · apply iscat_of_subset' _ h _
     simp
 
-lemma iscat_of_rev_iscat {L : LinOrd.{u}} (h : Scattered_ind_prop.{u,u} L) :
-   Scattered_ind_prop.{u,u} {carrier := L.carrier , str := L.str.swap} := by
+/-- The reversal of an iscat order is iscat -/
+lemma iscat_of_rev_iscat {L : LinOrd.{u}} (h : IScattered_prop.{u,u} L) :
+  IScattered_prop.{u,u} (LinOrd_swap L) := by
   induction' h with M m hm WO hWO f f_scat L Liso IH
-  · apply Scattered_ind_prop.base
-    exact hm
-  · let map (w : ({ carrier := WO.carrier, str := WO.str.swap } : LinOrd)) : LinOrd :=
-      { carrier := (f w), str := (f w).str.swap }
+  · exact @IScattered_prop.base (LinOrd_swap M) _ hm
+  · let map (w : LinOrd_swap WO) := LinOrd_swap (f w)
     let iso := Sigma_swap_alt_def f
     let p := (swap_iso_of_iso Liso)
     let p' := @OrderIso.symm _ _ (LinOrd_swap L).str.toLE (LinOrd_swap (dLexOrd WO f)).str.toLE p
     apply iscat_of_iso p'
-    apply Scattered_ind_prop.lex_sum { carrier := WO.carrier, str := WO.str.swap } ?_ map IH _ iso
+    apply IScattered_prop.lex_sum (LinOrd_swap WO) ?_ map IH _ iso
     · rcases hWO with WO | RWO
       · right; apply WO
       · left;
         apply RWO
 
--- (x, y] inductively scattered
+/-- (x, y] inductively scattered -/
 def iscat_int {L : LinOrd.{u}} (x y : L) : Prop :=
   let M : LinOrd.{u} := LinOrd.mk {a | (x < a ∧ a ≤ y) ∨ (y < a ∧ a ≤ x)}
-  Scattered_ind_prop.{u, u} M
+  IScattered_prop.{u, u} M
 
-lemma iscat_int_convex {L : LinOrd} (a b c : L) (h : a < b ∧ b < c) (h1 : iscat_int a c): iscat_int a b := by
+/-- the iscat_int relation is convex -/
+lemma iscat_int_convex {L : LinOrd} (a b c : L) (h : a < b ∧ b < c) (h1 : iscat_int a c):
+  iscat_int a b := by
   simp [iscat_int]
   simp [iscat_int] at h1
   have : { x | a < x ∧ x ≤ b ∨ b < x ∧ x ≤ a } ⊆ { x | a < x ∧ x ≤ c ∨ c < x ∧ x ≤ a } := by
     simp; intro x hx
     rcases hx with hx1 | hx1
     · left; exact And.intro hx1.left (le_trans hx1.right (le_of_lt h.right))
-    · left; exact And.intro (lt_trans h.left hx1.left) (le_of_lt (lt_of_le_of_lt hx1.right (lt_trans h.left h.right)))
+    · left; exact And.intro (lt_trans h.left hx1.left)
+                            (le_of_lt (lt_of_le_of_lt hx1.right (lt_trans h.left h.right)))
   exact iscat_of_subset' _ h1 _ this
 
+/-- -/
 lemma scat_int_layered_case {L : LinOrd} {a b c : L} (hab : a ≤ b) (hbc : b ≤ c) (scat_ab : iscat_int a b)
   (scat_bc : iscat_int b c) : iscat_int a c := by
   apply iscat_of_layered_iscats _ _ _ scat_ab scat_bc
@@ -273,14 +247,14 @@ lemma scat_int_symm {L : LinOrd} : ∀ {x y : L}, iscat_int x y → iscat_int y 
   intro x y h
   simp [iscat_int] at h
   simp [iscat_int]
+  have : (fun x_1 => x < x_1 ∧ x_1 ≤ y ∨ y < x_1 ∧ x_1 ≤ x) =
+          (fun x_1 => y < x_1 ∧ x_1 ≤ x ∨ x < x_1 ∧ x_1 ≤ y) := by
+    apply Set.eq_of_subset_of_subset
+    <;> (rintro a (⟨ha1, ha2⟩ | ⟨ha1, ha2⟩) ;
+          right; constructor <;> order ;
+          left; constructor <;> order)
   have : LinOrd.mk { x_1 // x < x_1 ∧ x_1 ≤ y ∨ y < x_1 ∧ x_1 ≤ x }
-        = LinOrd.mk { x_1 // y < x_1 ∧ x_1 ≤ x ∨ x < x_1 ∧ x_1 ≤ y } := by
-    have : (fun x_1 => x < x_1 ∧ x_1 ≤ y ∨ y < x_1 ∧ x_1 ≤ x) =
-            (fun x_1 => y < x_1 ∧ x_1 ≤ x ∨ x < x_1 ∧ x_1 ≤ y) := by
-      refine Set.setOf_inj.mp ?_ ; apply Set.eq_of_subset_of_subset
-      <;> (rintro a (⟨ha1, ha2⟩ | ⟨ha1, ha2⟩) ;
-           right; constructor <;> order ;
-           left; constructor <;> order)
+         = LinOrd.mk { x_1 // y < x_1 ∧ x_1 ≤ x ∨ x < x_1 ∧ x_1 ≤ y } := by
     simp [this]
     exact LinearOrder_subtype_HEq this
   simpa [this] using h
@@ -289,8 +263,7 @@ lemma scat_int_symm {L : LinOrd} : ∀ {x y : L}, iscat_int x y → iscat_int y 
 lemma iscat_int_equiv {L : LinOrd}: Equivalence (@iscat_int L) := by
   constructor
   · intro x
-    apply (iscat_of_well_founded
-      { carrier := { x_1 // x < x_1 ∧ x_1 ≤ x ∨ x < x_1 ∧ x_1 ≤ x }, str := inferInstance })
+    apply (iscat_of_well_founded (LinOrd.mk { x_1 // x < x_1 ∧ x_1 ≤ x ∨ x < x_1 ∧ x_1 ≤ x }))
     apply @wellFounded_of_isEmpty _ ?_
     by_contra nonempt
     simp at nonempt
@@ -320,11 +293,12 @@ lemma iscat_int_equiv {L : LinOrd}: Equivalence (@iscat_int L) := by
     · exact scat_int_symm (scat_int_layered_case hyz hxy
                           (scat_int_symm scat_yz) (scat_int_symm scat_xy))
 
+/-- if iscat_int x y, then the LinOrd restricted to [x, y] is also iscat -/
 lemma iscat_to_closed_interval {L : LinOrd.{u}} (x y : L) (h : iscat_int x y):
-  Scattered_ind_prop.{u, u} (LinOrd.mk {a | (x ≤ a ∧ a ≤ y) ∨ (y ≤ a ∧ a ≤ x)}) := by
-  simp
+  IScattered_prop.{u, u} (LinOrd.mk {a | (x ≤ a ∧ a ≤ y) ∨ (y ≤ a ∧ a ≤ x)}) := by
+  -- first prove the result holds if x ≤ y
   have helper {L : LinOrd.{u}} (x y : L) (h : iscat_int x y) (hxy : x ≤ y):
-  Scattered_ind_prop.{u, u} (LinOrd.mk {a | (x ≤ a ∧ a ≤ y) ∨ (y ≤ a ∧ a ≤ x)}) := by
+  IScattered_prop.{u, u} (LinOrd.mk {a | (x ≤ a ∧ a ≤ y) ∨ (y ≤ a ∧ a ≤ x)}) := by
     · apply iscat_of_layered_iscats _ (LinOrd.mk ({x} : Set L))
                                       (LinOrd.mk {a | x < a ∧ a ≤ y})
       · apply iscat_of_well_founded
@@ -376,7 +350,7 @@ lemma iscat_to_closed_interval {L : LinOrd.{u}} (x y : L) (h : iscat_int x y):
     }
 
 lemma isact_of_interval_flip {L : LinOrd.{u}} (x y : L) (h : iscat_int x y):
-  Scattered_ind_prop.{u, u} (LinOrd.mk {a | (x ≤ a ∧ a < y) ∨ (y ≤ a ∧ a < x)}) := by
+  IScattered_prop.{u, u} (LinOrd.mk {a | (x ≤ a ∧ a < y) ∨ (y ≤ a ∧ a < x)}) := by
   simp [iscat_int] at h
   apply iscat_of_subset' _ (iscat_to_closed_interval x y h)
   rintro a (⟨h1, h2⟩ | ⟨h1, h2⟩)
@@ -428,9 +402,9 @@ lemma j_part_help {L : LinOrd} {Cof : Set L}
 
 lemma iscat_of_WF_parition (L : LinOrd.{u}) (Cof : Set L)
   (hCof : IsCofinal Cof ∧ Cof.WellFoundedOn fun x1 x2 ↦ x1 < x2)
-  (all_iscat : ∀ (w : LinOrd.mk Cof), Scattered_ind_prop.{u,u} (LinOrd.mk (j w)))
+  (all_iscat : ∀ (w : LinOrd.mk Cof), IScattered_prop.{u,u} (LinOrd.mk (j w)))
   (nomax : NoMaxOrder L):
-  Scattered_ind_prop.{u,u} L := by
+  IScattered_prop.{u,u} L := by
   let S1 : LinOrd.{u} := LinOrd.mk Cof
   have : IsWellOrder S1.carrier S1.str.lt :=
       { toIsTrichotomous := instIsTrichotomousLt,
@@ -440,17 +414,17 @@ lemma iscat_of_WF_parition (L : LinOrd.{u}) (Cof : Set L)
               simp [Set.WellFoundedOn] at hCof
               exact hCof.right }
   let J (a : Cof) := LinOrd.mk (j a)
-  let Jiso : L ≃o ({carrier := Σₗ (w : Cof), (J w), str := Sigma.Lex.linearOrder} : LinOrd) := by
+  let Jiso : L ≃o dLexOrd (LinOrd.mk Cof) J := by
     apply @iso_of_sigma_partition L S1 j (j_part_help hCof nomax)
     intro a b hab c hc d hd
     exact lt_of_le_of_lt hc.left (hd.right a hab)
-  apply Scattered_ind_prop.lex_sum.{u,u} S1
+  apply IScattered_prop.lex_sum.{u,u} S1
     ?_ J ?_ _ Jiso
   · left; exact wellFounded_lt
   · exact fun w ↦ all_iscat w
 
 lemma dense_quotient_helper {L : LinOrd} {a b : L} :
-  Scattered_ind_prop.{u,u} (LinOrd.mk {x | a < x ∧ x ≤ b ∧ iscat_int a x}) := by
+  IScattered_prop.{u,u} (LinOrd.mk {x | a < x ∧ x ≤ b ∧ iscat_int a x}) := by
   let A := { x | a < x ∧ x ≤ b ∧ iscat_int a x}
   rcases @exists_cof_WF_subset A inferInstance with ⟨Cof, hCof⟩
   rcases Classical.em (NoMaxOrder (LinOrd.mk A)) with nomax | max
@@ -474,21 +448,22 @@ lemma subtype_swap {α : Type*} {L : LinearOrder α} {p : α → Prop}:
   @Subtype.instLinearOrder α (L.swap) p = (@Subtype.instLinearOrder α L p).swap := by
   exact rfl
 
-lemma iscat_iff_swap_swap {L : LinOrd.{u}} : Scattered_ind_prop.{u,u} L ↔ Scattered_ind_prop.{u,u} (LinOrd_swap (LinOrd_swap L)) := by
+lemma iscat_iff_swap_swap {L : LinOrd.{u}} : IScattered_prop.{u,u} L ↔ IScattered_prop.{u,u} (LinOrd_swap (LinOrd_swap L)) := by
   rw [LinOrd_swap_swap]
 
 lemma iscat_int_in_L_swap {L : LinOrd} (a b : L) : @iscat_int L a b → @iscat_int (LinOrd_swap L) a b := by
   simp [iscat_int]
   intro h
   rw [subtype_swap]
-  let M  : LinOrd := { carrier := { x // a < x ∧ x ≤ b ∨ b < x ∧ x ≤ a },
-                        str := (Subtype.instLinearOrder fun x ↦ a < x ∧ x ≤ b ∨ b < x ∧ x ≤ a) }
-  have : Scattered_ind_prop M := h
-  let p :=  iscat_of_rev_iscat this
-  simp [M] at p
-  --apply p
+  let M := LinOrd.mk { x // @LT.lt (LinOrd_swap L) _ a x ∧ @LE.le (LinOrd_swap L) _ x b
+          ∨ @LT.lt (LinOrd_swap L) _ b x ∧ @LE.le (LinOrd_swap L) _ x a }
+  sorry -- need to use bound modifications bc of swapping
+  -- have : IScattered_prop M := h
+  -- let p :=  iscat_of_rev_iscat this
+  -- simp [M, LinOrd_swap] at p
+  -- apply p
+  -- sorry
 
-  sorry
 
 lemma dense_quotient {L : LinOrd.{u}} {a b : L} (h : ¬ iscat_int a b) (hl : a < b) :
   ∃ c, a < c ∧ c < b ∧ ¬ iscat_int a c ∧ ¬ iscat_int c b := by
@@ -531,54 +506,36 @@ lemma dense_quotient {L : LinOrd.{u}} {a b : L} (h : ¬ iscat_int a b) (hl : a <
       <;> order
   apply h
   simp [iscat_int]
-  apply iscat_of_layered_iscats _ {carrier := A, str := inferInstance}
-                                {carrier := B, str := inferInstance}
+  apply iscat_of_layered_iscats _ (LinOrd.mk A) (LinOrd.mk B)
   · exact dense_quotient_helper
-  · simp [B]
-    let B' : LinOrd := {carrier := { x // a ≤ x ∧ x < b ∧ iscat_int x b },
-                        str := inferInstance}
-    have : Scattered_ind_prop.{u,u} B' := by
+  · have : IScattered_prop.{u,u}
+      (LinOrd.mk { x // a ≤ x ∧ x < b ∧ iscat_int x b }) := by
+      apply @iscat_of_rev_iscat
+        (LinOrd_swap (LinOrd.mk { x // a ≤ x ∧ x < b ∧ iscat_int x b }))
       apply iscat_of_iso _ (@dense_quotient_helper (LinOrd_swap L) b a)
       exact {
         toFun := fun x => ⟨x,
           by
-          rcases x.2 with ⟨p1, p2, p3⟩
-          change b > x at p1
-          --simp [LinOrd_swap] at p2
-          --change x.val ≥ a at p2
-          -- exact And.intro x.2.right.left
-          --       (And.intro x.2.left (scat_int_symm x.2.right.right))
-          sorry⟩
+          split_ands; exact x.2.right.left ; exact x.2.left
+          exact iscat_int_in_L_swap x.1 b
+            (Equivalence.symm iscat_int_equiv x.2.right.right)⟩
         invFun := fun x => ⟨x,
           by
-          split_ands
-          · exact x.2.right.left
-          · exact x.2.left
-          · apply scat_int_symm
-            let p := x.2.right.right
-            simp [iscat_int] at p
-            simp [iscat_int]
+            split_ands; exact x.2.right.left ; exact x.2.left
+            exact iscat_int_in_L_swap b x.1
+              (Equivalence.symm iscat_int_equiv x.2.right.right)⟩
+        left_inv := by intro _; simp
+        right_inv := by intro _; simp
+        map_rel_iff' := by intro _ _; trivial }
 
-            apply (iscat_int_in_L_swap x.1 b) (x.2.right.right)⟩
-        left_inv := by intro _; trivial
-        right_inv := by intro _; trivial
-        map_rel_iff' := by
-          intro x y
-          simp [B']
-          sorry
-          }
-    simp [B'] at this
-    have : Scattered_ind_prop (LinOrd.mk { x | a < x ∧ x < b ∧ iscat_int x b }) := by
+    have : IScattered_prop (LinOrd.mk { x | a < x ∧ x < b ∧ iscat_int x b }) := by
       apply iscat_of_subset' _ this
       rintro x ⟨hx1, hx2, hx3⟩
       exact And.intro (le_of_lt hx1) (And.intro hx2 hx3)
     apply iscat_of_layered_iscats _
       (LinOrd.mk { x | a < x ∧ x < b ∧ iscat_int x b })
       (LinOrd.mk ({b} : Set L)) this
-    · apply iscat_of_well_founded _
-        (@Finite.to_wellFoundedLT
-          ({ carrier := ({b} : Set L), str := inferInstance } : LinOrd)
-          (Set.finite_singleton b)).1
+    · exact iscat_of_singleton b
     · apply Two_iso_helper
       · ext x; simp
         constructor
@@ -618,7 +575,7 @@ lemma dense_quotient {L : LinOrd.{u}} {a b : L} (h : ¬ iscat_int a b) (hl : a <
       split_ands <;> (first | order | exact this | exact hc3)
 
 lemma ind_scat_of_fin_seg_of_one_class {X : LinOrd.{u}}
-  (x : X) (one_class : ∀ x y : X, iscat_int x y) : Scattered_ind_prop.{u,u} {carrier := {x_1 // x < x_1}, str := inferInstance} := by
+  (x : X) (one_class : ∀ x y : X, iscat_int x y) : IScattered_prop.{u,u} (LinOrd.mk {x_1 // x < x_1}) := by
   rcases @exists_cof_WF_subset {x_1 // x_1 > x} inferInstance with ⟨Cof, hCof⟩
   rcases Classical.em (NoMaxOrder (LinOrd.mk {x_1 // x < x_1})) with nomax | max
   · apply iscat_of_WF_parition (LinOrd.mk {x_1 // x < x_1}) Cof hCof ?_ nomax
@@ -628,13 +585,11 @@ lemma ind_scat_of_fin_seg_of_one_class {X : LinOrd.{u}}
 
     let p :=  iscat_of_subset'' ((fun x_1 => x < x_1 ∧ x_1 ≤ ↑↑w ∨ ↑↑w < x_1 ∧ x_1 ≤ x))
                                     (fun x_1 => x < x_1 ) one_class
-    apply @iscat_of_subset' {carrier := { x_2 // (fun x_1 => x < x_1) x_2 },
-                                str := inferInstance} _ p
-                                { x_1 | x_1 ≤ ↑w ∧ ∀ a' < w, ↑a' < x_1 }
+    apply @iscat_of_subset' (LinOrd.mk { x_2 // x < x_2 }) _ p
+                            { x_1 | x_1 ≤ ↑w ∧ ∀ a' < w, ↑a' < x_1 }
     simp; intro a ha haw h
     left; exact And.intro ha haw
-  · rcases isEmpty_or_nonempty ({carrier := { x_1 // x < x_1 },
-                                  str := inferInstance} : LinOrd) with empt | nonempt
+  · rcases isEmpty_or_nonempty (LinOrd.mk { x_1 // x < x_1 }) with empt | nonempt
     · exact iscat_of_empty _ empt
     rcases (max_of_NoMaxOrder max) with ⟨m, hm⟩
     apply iscat_of_iso ?_ (one_class x m)
@@ -653,22 +608,22 @@ lemma ind_scat_of_fin_seg_of_one_class {X : LinOrd.{u}}
       right_inv := by intro _ ; simp
       map_rel_iff' := by intro _; simp }
 
-theorem Hausdorff_Scattered_Orders (X : LinOrd.{u}): IsScattered X ↔ Scattered_ind_prop.{u,u} X := by
+theorem Hausdorff_Scattered_Orders (X : LinOrd.{u}): IsScattered X ↔ IScattered_prop.{u,u} X := by
   constructor
   · intro X_scat
     rcases Classical.em (Nonempty X) with nonempt | empt
     rcases Classical.em (∀ x y : X, iscat_int x y) with one_class | mult_class
     · rcases Classical.exists_true_of_nonempty nonempt with ⟨x⟩
-      have part1 : Scattered_ind_prop.{u,u} {carrier := {x_1 // x < x_1}, str := inferInstance} := by
+      have part1 : IScattered_prop.{u,u} (LinOrd.mk {x_1 // x < x_1}) := by
         exact @ind_scat_of_fin_seg_of_one_class _ x one_class
-      have part2 : Scattered_ind_prop.{u,u} {carrier := {x_1 // x_1 < x}, str := inferInstance} := by
-        let X' : LinOrd := { carrier := X.carrier, str := X.str.swap}
+      have part2 : IScattered_prop.{u,u} (LinOrd.mk {x_1 // x_1 < x}) := by
+        let X' := LinOrd_swap X
         have X_eq: X.carrier = X'.carrier := by exact rfl
 
-        let L : LinOrd := { carrier := { x_1 // x_1 < x }, str := LinearOrder.swap { x_1 // x_1 < x } inferInstance }
-        let M : LinOrd := { carrier := { x_1 : X' // @LT.lt X' _ (X_eq ▸ x) x_1}, str := inferInstance }
+        let L : LinOrd := LinOrd_swap (LinOrd.mk { x_1 // x_1 < x })
+        let M : LinOrd := LinOrd.mk { x_1 : X' // @LT.lt X' _ (X_eq ▸ x) x_1}
 
-        have : Scattered_ind_prop L := by
+        have : IScattered_prop L := by
           let iso : @OrderIso L M L.str.toLE M.str.toLE := by
             exact {
             toFun := fun y => y
@@ -715,14 +670,11 @@ theorem Hausdorff_Scattered_Orders (X : LinOrd.{u}): IsScattered X ↔ Scattered
         | Three.two =>  { x_1 | x < x_1 }
 
       · have : Finite Three.L := Three.finite
-        apply Scattered_ind_prop.lex_sum Three.L (Or.inl (Finite.to_wellFoundedLT).1)
+        apply IScattered_prop.lex_sum Three.L (Or.inl (Finite.to_wellFoundedLT).1)
           (fun w => LinOrd.mk (f w))
         · intro w; cases w
           · exact part2
-          · apply iscat_of_well_founded _
-              (@Finite.to_wellFoundedLT
-                ({ carrier := ({x} : Set X), str := inferInstance } : LinOrd)
-                (Set.finite_singleton x)).1
+          · exact iscat_of_singleton x
           · exact part1
         · apply (iso_of_sigma_partition f _ _)
           · intro z
@@ -812,7 +764,7 @@ theorem Hausdorff_Scattered_Orders (X : LinOrd.{u}): IsScattered X ↔ Scattered
       exact symm (A_s hy a.2)
 
     · -- inductive case
-      apply scat_of_iso_to_scat L { carrier := Σₗ (w : ↑lo_lex), ↑(ind w), str := Sigma.Lex.linearOrder } Liso
+      apply scat_of_iso_to_scat L (dLexOrd lo_lex ind) Liso
 
       intro A A_ord props
       let f : A → lo_lex := fun x => x.val.1 -- map elements to their position in the larger well ordering
