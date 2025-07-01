@@ -5,7 +5,7 @@ import Mathlib.Tactic
 section
 variable {α : Type*} [LinearOrder α]
 
--- End extension ordering on sets. A is an end extension of B iff B is an initial segment of A
+/-- End extension ordering on sets. A is an end extension of B iff B is an initial segment of A -/
 def endext (A B : Set α) := A ⊆ B ∧ ∀ b ∈ (B \ A), ∀ a ∈ A, a < b
 
 local infix:50 " ≼ " => endext
@@ -25,31 +25,35 @@ theorem endext_trans (A B C : Set α): A ≼ B → B ≼ C → A ≼ C := by
       apply hab.1 ha
 end
 
+/-- Collection of well-founded linear orders of α -/
 abbrev WFs (α : Type*) [LinearOrder α] := {A : Set α // A.WellFoundedOn (· < ·)}
 
 variable {α : Type*} [LinearOrder α]
+
+/-- endext operation specialized to WF -/
 def endext'  (A B : WFs α) := endext A.1 B.1
 local infix:50 " ≼ " => endext'
 
 theorem endext_trans' (A B C : WFs α): A ≼ B → B ≼ C → A ≼ C := by
   apply endext_trans
 
+/-- Given  a set of WFs, return the same contents as a set of sets-/
 def WF_convert (α : Type*) [LinearOrder α] (c : Set (WFs α)) : Set (Set α)
                := Set.image (λ x => x.1) c
 
+/-- If x is an element of a union over the image of a WF_convert call, it is
+    a member of one of the WFs -/
 lemma Mem_from_mem_Uwf {α : Type*} [LinearOrder α] {C : Set (WFs α)}
                        (x) (h: x ∈ ⋃₀ (WF_convert α C)) : ∃ c ∈ C, x ∈ c.1 := by
   rcases Set.mem_sUnion.mp h with ⟨c₀, hc₀⟩
-  simp [WF_convert] at hc₀
-  rcases hc₀.left with ⟨c₀wf, inC⟩
-  use ⟨c₀, c₀wf⟩
+  simp only [WF_convert] at hc₀
+  rcases hc₀.left with ⟨c₀', inC, c_eq⟩
+  subst c₀; use ⟨c₀', c₀'.2⟩
   exact And.intro inC hc₀.right
 
-
-lemma WF_of_WF_chain_union {α : Type*} [LinearOrder α] (C : Set (WFs α)) :
-  IsChain (. ≼ .) C → (⋃₀ (WF_convert α C)).WellFoundedOn (· < ·) := by
-  intro isChain_C
-
+/-- The union of a chain of WFs is well-founded -/
+lemma WF_of_WF_chain_union {α : Type*} [LinearOrder α] (C : Set (WFs α))
+  (isChain_C : IsChain (. ≼ .) C) : (⋃₀ (WF_convert α C)).WellFoundedOn (· < ·) := by
   rw [Set.wellFoundedOn_iff_no_descending_seq]
   intro f
   by_contra hf_image
@@ -73,7 +77,7 @@ lemma WF_of_WF_chain_union {α : Type*} [LinearOrder α] (C : Set (WFs α)) :
     · exact And.intro hc'.right contra
     · exact h1.left
 
--- Every linear order has a well ordered, cofinal subset
+/-- Every linear order has a well ordered, cofinal subset -/
 lemma exists_cof_WF_subset  {α : Type*} [LinearOrder α]:
   ∃ (A : Set α), IsCofinal A ∧ A.WellFoundedOn (· < ·) := by
 
@@ -82,7 +86,6 @@ lemma exists_cof_WF_subset  {α : Type*} [LinearOrder α]:
                   IsChain (. ≼ .) C
                   → ∃ (ub : WFs α), ∀ a ∈ C, a ≼ ub := by
     intro C hC
-    simp [IsChain] at hC
 
     let maxwf := (⋃₀ (WF_convert α C))
     have maxwf_wf : maxwf.WellFoundedOn (· < ·) := by
@@ -90,13 +93,10 @@ lemma exists_cof_WF_subset  {α : Type*} [LinearOrder α]:
 
     use ⟨maxwf, maxwf_wf⟩
     intro a hac
-    simp [maxwf]
     constructor
-    · have : ↑a ∈ WF_convert α C := by
-        simp [WF_convert,hac]
-        exact a.2
+    · have : ↑a ∈ WF_convert α C := by use a
       apply Set.subset_sUnion_of_subset (WF_convert α C) a
-      simp
+      simp only [subset_refl]
       exact this
     · intro x hx y hy
       rcases Mem_from_mem_Uwf x hx.left with ⟨c, hc⟩
@@ -120,37 +120,26 @@ lemma exists_cof_WF_subset  {α : Type*} [LinearOrder α]:
   use M
   constructor
   · by_contra not_cof
-    simp [IsCofinal] at not_cof
+    simp only [IsCofinal, not_forall, not_exists, not_le] at not_cof
     rcases not_cof with ⟨a, ha⟩
+    push_neg at ha
 
     let M' := insert a M.1
-
-    have hM' : M'.WellFoundedOn fun x1 x2 => x1 < x2 := by
-      exact Set.WellFoundedOn.insert M.2 a
-
+    have hM' : M'.WellFoundedOn fun x1 x2 => x1 < x2 := Set.WellFoundedOn.insert M.2 a
     let M'₀ : WFs α := ⟨M', hM'⟩
     have h :  M ≼ M'₀ := by
       constructor
-      · have : M.1 ⊆ M' := by
-          exact (M.1).subset_insert a
-        exact Set.subset_insert a (M.1)
+      · exact Set.subset_insert a (M.1)
       · intro y hy x hx
-        have : a ∉ M.1 := by
-          by_contra haM
-          exact lt_irrefl a (ha a haM)
         have : y = a := by
-          simp [M'] at hy
           rcases hy.left with h | h
           · exact h
           · by_contra _ ; exact hy.right h
         rw [this]
         exact ha x hx
 
-    have : ↑M'₀ ≼ ↑M := by
-      exact hM M'₀ h
-
     have Meq : M'₀.1 = M.1 := by
-      exact Set.Subset.antisymm (this.left) (h.left)
+      exact Set.Subset.antisymm ((hM M'₀ h).left) (h.left)
 
     have aM : a ∈ M'₀.1 := by
       exact Set.mem_insert a M.1

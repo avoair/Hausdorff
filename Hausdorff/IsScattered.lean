@@ -15,9 +15,7 @@ def OrderEmbedding_comp {α β γ: Type*} [Preorder α] [Preorder β] [Preorder 
   { toFun := g ∘ f
     inj' := by
       apply (EmbeddingLike.comp_injective (⇑f) g).mpr f.inj'
-    map_rel_iff' := by
-      intro a b
-      simp}
+    map_rel_iff' := by intro _ _; simp }
 
 /-- Order isomoprhism preserves (order) density -/
 lemma dense_of_iso_from_dense {α β: Type*} [Preorder α] [Preorder β] (h: DenselyOrdered α) :
@@ -90,10 +88,10 @@ lemma scat_iff_not_embeds_Q (X : LinOrd) : IsScattered X ↔ IsEmpty (ℚ ↪o X
              (NoTopOrder.to_noMaxOrder ℚ) hA').right
     · rcases @instNonemptyOfInhabited ℚ _ with ⟨a⟩
       use f a; simp
-  · -- we proceed by contradiction and directly apply Cantor's theorem
+  · -- proceed by contradiction and directly apply Cantor's theorem
     intro h
     by_contra contra
-    simp [IsScattered] at contra
+    simp only [IsScattered, not_forall, not_not] at contra
     rcases contra with ⟨A, p1, p2, p3, p4, p5⟩
     have : Countable ↑A := by exact p1
     have : Nonempty ↑A := by rcases p5 with ⟨a, ha⟩; use a
@@ -117,7 +115,7 @@ lemma scat_of_iso_to_scat (X : LinOrd) (Y : LinOrd) (f : X ≃o Y)
   rw [scat_iff_not_embeds_Q X]
   rw [scat_iff_not_embeds_Q Y, <-not_nonempty_iff, <-exists_true_iff_nonempty] at h
   by_contra contra
-  simp at contra
+  rw [not_isEmpty_iff] at contra
   rcases contra with ⟨g⟩
   apply h
   use OrderEmbedding_comp (OrderIso.toOrderEmbedding f) g
@@ -142,35 +140,31 @@ lemma scat_of_well_founded (X : LinOrd) : WellFounded X.str.lt → IsScattered X
 lemma rev_scattered_of_scattered (X : LinOrd) : IsScattered X →
   IsScattered {carrier := X.carrier, str := X.str.swap} := by
   intro X_Scat
-
-  simp [LinearOrder.swap]
-  intro A A_ord props
-  simp at A --- ?
-
+  rintro A A_ord ⟨p1, p2, p3, p4, p5⟩
   apply X_Scat A
-  simp
   split_ands
-  · exact props.left
+  · exact p1
   · constructor
     intro a b hab
-    rcases props.right.left.dense b a hab with ⟨c, hc⟩
+    rcases p2.dense b a hab with ⟨c, hc⟩
     use c
     exact And.intro hc.right hc.left
   · constructor
     intro a
-    rcases props.right.right.right.left.exists_gt a with ⟨b, hb⟩
+    rcases p4.exists_gt a with ⟨b, hb⟩
     use b, hb
   · constructor
     intro a
-    rcases props.right.right.left.exists_lt a with ⟨b, hb⟩
+    rcases p3.exists_lt a with ⟨b, hb⟩
     use b, hb
-  · rcases exists_true_iff_nonempty.mpr props.right.right.right.right with ⟨a, _⟩
+  · rcases exists_true_iff_nonempty.mpr p5 with ⟨a, _⟩
     use a, a.2
 
-/-- Reverse well orders are scattered -/
+/-- .swap is its own inverse -/
 lemma swap_of_swap_elim {X : LinOrd}: (X.str.swap).swap = X.str := by
   ext; rfl
 
+/-- Reverse well orders are scattered -/
 lemma scat_of_rev_well_founded (X : LinOrd) : WellFounded (X.str.swap).lt → IsScattered X := by
   intro h
   have p := rev_scattered_of_scattered
