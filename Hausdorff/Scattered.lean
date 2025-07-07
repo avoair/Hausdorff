@@ -126,10 +126,10 @@ lemma scattered_of_wellFounded (X : LinOrd) : WellFounded X.str.lt → Scattered
   intro A LO props
   rcases props.right.right.right.right with ⟨y, hy⟩
   rcases Decidable.em (Nonempty ↑A) with nonempt | empt
-  · have : A.Nonempty := by
+  · have nonempt : A.Nonempty := by
       rw [Set.nonempty_iff_ne_empty, <- Set.nonempty_iff_ne_empty']
       exact props.right.right.right.right
-    rcases WellFounded.has_min hwf A this with ⟨lb, hlb⟩
+    rcases WellFounded.has_min hwf A nonempt with ⟨lb, hlb⟩
     rcases (props.right.right.left).exists_lt ⟨lb, hlb.left⟩ with ⟨a, ha⟩
     apply hlb.right a.1 a.2
     exact ha
@@ -167,7 +167,7 @@ lemma swap_swap_elim {X : LinOrd}: (X.str.swap).swap = X.str := by
 /-- Reverse well orders are scattered -/
 lemma scattered_of_rev_wellFounded (X : LinOrd) : WellFounded (X.str.swap).lt → Scattered X := by
   intro h
-  have p := scattered_swap {carrier := X.carrier, str := X.str.swap}
+  have aux := scattered_swap {carrier := X.carrier, str := X.str.swap}
     (scattered_of_wellFounded {carrier := X.carrier, str := X.str.swap} h)
-  rw [<-swap_swap_elim] at p
-  exact p
+  rw [<-swap_swap_elim] at aux
+  exact aux

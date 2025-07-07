@@ -1,4 +1,4 @@
--- A full proof that every linear order has a well-ordered, cofinal subset
+-- Every linear order has a well-ordered, cofinal subset
 
 import Mathlib.Tactic
 
@@ -15,20 +15,15 @@ theorem end_ext_trans (A B C : Set α): A ≼ B → B ≼ C → A ≼ C := by
   constructor
   · apply subset_trans hab.left hbc.left
   · intro c hc a ha
-    have : c ∈ (B \ A) ∨ c ∈ (C \ B) := by  ----- CONDENSE HERE -- ONLY ONE RCASES
-      rcases Classical.em (c ∈ B) with h1 | h1
-      · left ; exact And.intro h1 hc.right
-      · right ; exact And.intro hc.left h1
-    rcases this with h1 | h2
-    · apply hab.right c h1 _ ha
-    · apply hbc.right _ h2
-      apply hab.1 ha
+    rcases Classical.em (c ∈ B) with h1 | h1
+    · exact hab.right c (And.intro h1 hc.right) a ha
+    · exact hbc.right c (And.intro hc.left h1) a (hab.left ha)
+
 end
 
 /-- Collection of well-founded linear orders of α -/
 abbrev WellFoundedSet (α : Type*) [LinearOrder α] := {A : Set α // A.WellFoundedOn (· < ·)}
 
-#check Countable
 variable {α : Type*} [LinearOrder α]
 
 /-- end_ext operation specialized to WF -/
@@ -39,13 +34,13 @@ theorem end_ext_trans' (A B C : WellFoundedSet α): A ≼ B → B ≼ C → A �
   apply end_ext_trans
 
 /-- Given  a set of WellFoundedSet, return the same contents as a set of sets-/
-def sets_of_wellFoundedSets (α : Type*) [LinearOrder α] (c : Set (WellFoundedSet α)) : Set (Set α)
+def sets_of_wellFoundedSets (c : Set (WellFoundedSet α)) : Set (Set α)
                := Set.image (λ x => x.1) c
 
 /-- If x is an element of a union over the image of a WF_convert call, it is
     a member of one of the WellFoundedSet -/
-lemma mem_sUnion_of_wellFoundedSets {α : Type*} [LinearOrder α] {C : Set (WellFoundedSet α)}
-                       (x) (h: x ∈ ⋃₀ (sets_of_wellFoundedSets α C)) : ∃ c ∈ C, x ∈ c.1 := by
+lemma mem_sUnion_of_wellFoundedSets {C : Set (WellFoundedSet α)}
+  (x : α) (h: x ∈ ⋃₀ (sets_of_wellFoundedSets C)) : ∃ c ∈ C, x ∈ c.1 := by
   rcases Set.mem_sUnion.mp h with ⟨c₀, hc₀⟩
   simp only [sets_of_wellFoundedSets] at hc₀
   rcases hc₀.left with ⟨c₀', inC, c_eq⟩
@@ -53,8 +48,8 @@ lemma mem_sUnion_of_wellFoundedSets {α : Type*} [LinearOrder α] {C : Set (Well
   exact And.intro inC hc₀.right
 
 /-- The union of a chain of WellFoundedSet is well-founded -/
-lemma wellFoundedOn_of_chain_sUnion {α : Type*} [LinearOrder α] (C : Set (WellFoundedSet α))
-  (isChain_C : IsChain (. ≼ .) C) : (⋃₀ (sets_of_wellFoundedSets α C)).WellFoundedOn (· < ·) := by
+lemma wellFoundedOn_of_chain_sUnion (C : Set (WellFoundedSet α))
+  (isChain_C : IsChain (. ≼ .) C) : (⋃₀ (sets_of_wellFoundedSets C)).WellFoundedOn (· < ·) := by
   rw [Set.wellFoundedOn_iff_no_descending_seq]
   intro f
   by_contra hf_image
@@ -79,7 +74,7 @@ lemma wellFoundedOn_of_chain_sUnion {α : Type*} [LinearOrder α] (C : Set (Well
     · exact h1.left
 
 /-- Every linear order has a well ordered, cofinal subset -/
-lemma exists_cofinal_wellFoundedOn_subset  {α : Type*} [LinearOrder α]:
+lemma exists_cofinal_wellFoundedOn_subset:
   ∃ (A : Set α), IsCofinal A ∧ A.WellFoundedOn (· < ·) := by
 
   -- every chain of well orders (ordered by end extension) is bounded
@@ -87,16 +82,15 @@ lemma exists_cofinal_wellFoundedOn_subset  {α : Type*} [LinearOrder α]:
                   IsChain (. ≼ .) C
                   → ∃ (ub : WellFoundedSet α), ∀ a ∈ C, a ≼ ub := by
     intro C hC
-
-    let maxwf := (⋃₀ (sets_of_wellFoundedSets α C))
-    have maxwf_wf : maxwf.WellFoundedOn (· < ·) := by
+    let maxwf := (⋃₀ (sets_of_wellFoundedSets C))
+    have maxwf_WellFoundedOn : maxwf.WellFoundedOn (· < ·) := by
       exact wellFoundedOn_of_chain_sUnion C hC
 
-    use ⟨maxwf, maxwf_wf⟩
+    use ⟨maxwf, maxwf_WellFoundedOn⟩
     intro a hac
     constructor
-    · have : ↑a ∈ sets_of_wellFoundedSets α C := by use a
-      apply Set.subset_sUnion_of_subset (sets_of_wellFoundedSets α C) a
+    · have : ↑a ∈ sets_of_wellFoundedSets C := by use a
+      apply Set.subset_sUnion_of_subset (sets_of_wellFoundedSets C) a
       simp only [subset_refl]
       exact this
     · intro x hx y hy
@@ -111,13 +105,14 @@ lemma exists_cofinal_wellFoundedOn_subset  {α : Type*} [LinearOrder α]:
           exact hx.right (h1.left hc.right)
         · exact h2.right x (And.intro hc.right hx.right) y hy
 
-  have le_trans_overWF : ∀ {a b c : WellFoundedSet α}, a ≼ b → b ≼ c → a ≼ c := by
+  have end_ext_trans_wellFoundedSets : ∀ {a b c : WellFoundedSet α}, a ≼ b → b ≼ c → a ≼ c := by
     intro a b c hab hbc
     exact end_ext_trans a.1 b.1 c.1 hab hbc
 
-  have max_elt: ∃ (m : (WellFoundedSet α)), ∀ (a : (WellFoundedSet α)), m ≼ a → a ≼ m := by
-    exact exists_maximal_of_chains_bounded zorn_prop le_trans_overWF
-  rcases max_elt with ⟨M, hM⟩
+  have exists_max_elt: ∃ (m : (WellFoundedSet α)), ∀ (a : (WellFoundedSet α)), m ≼ a → a ≼ m := by
+    exact exists_maximal_of_chains_bounded zorn_prop end_ext_trans_wellFoundedSets
+
+  rcases exists_max_elt with ⟨M, hM⟩
   use M
   constructor
   · by_contra not_cof

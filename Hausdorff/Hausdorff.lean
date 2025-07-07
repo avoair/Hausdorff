@@ -78,14 +78,14 @@ lemma hausdorffScattered_of_orderIso {L M : LinOrd.{u}} (f : @OrderIso M L (M.st
 /-- One scattered order ontop of another scattered order is scattered -/
 lemma hausdorffScattered_of_two_dLexOrd (L M N : LinOrd.{u}) (h1 : HausdorffScattered M)
   (h2: HausdorffScattered N)
-  (iso : L ≃o dLexOrd Two.L.{u} (g' M N)) :
+  (iso : L ≃o dLexOrd Two.L.{u} (two_map M N)) :
   HausdorffScattered L := by
   apply HausdorffScattered.lex_sum Two.L
-    (Or.inl (@Finite.to_wellFoundedLT _ Two.finite).1) (g' M N)
+    (Or.inl (@Finite.to_wellFoundedLT _ Two.instFinite).1) (two_map M N)
   · intro w
     match w with
-    | Two.zero => {simp only [g']; exact h1}
-    | Two.one => {simp only [g']; exact h2}
+    | Two.zero => {simp only [two_map]; exact h1}
+    | Two.one => {simp only [two_map]; exact h2}
   · exact iso
 
 /-- A suborder of a HausdorffScattered order is HausdorffScatteredtered -/
@@ -93,10 +93,10 @@ lemma hausdorffScattered_of_subset {L : LinOrd} (A : Set L) (h : HausdorffScatte
   HausdorffScattered (LinOrd.mk A) := by
   induction' h with M m hm I WF_RWF map scat_map N Niso IH
   · -- base case
-    have A_sub: A.Subsingleton := by
+    have A_subsingleton: A.Subsingleton := by
       apply @Set.subsingleton_of_subset_singleton _ m A
       rw [hm]; exact Set.subset_univ A
-    rcases Set.Subsingleton.eq_empty_or_singleton A_sub with h | h
+    rcases Set.Subsingleton.eq_empty_or_singleton A_subsingleton with h | h
     · apply hausdorffScattered_empty _ (Set.isEmpty_coe_sort.mpr h)
     · rcases h with ⟨m', hm'⟩
       apply HausdorffScattered.base (⟨m', by rw[hm']; apply Set.mem_singleton⟩ : A)
@@ -151,17 +151,17 @@ lemma hausdorffScattered_of_subset'' {L : LinOrd} (P : L → Prop) (T : L → Pr
     simp
 
 /-- The reversal of an HausdorffScatteredtered order is HausdorffScatteredtered -/
-lemma hausdorffScattered_of_swap {L : LinOrd} (h : HausdorffScattered L) :
-  HausdorffScattered (LinOrd_swap L) := by
+lemma hausdorffScattered_swap {L : LinOrd} (h : HausdorffScattered L) :
+  HausdorffScattered (linOrd_swap L) := by
   induction' h with M m hm WO hWO f f_scat L Liso IH
-  · exact @HausdorffScattered.base (LinOrd_swap M) _ hm
-  · let map (w : LinOrd_swap WO) := LinOrd_swap (f w)
+  · exact @HausdorffScattered.base (linOrd_swap M) _ hm
+  · let map (w : linOrd_swap WO) := linOrd_swap (f w)
     let iso := Sigma_swap_alt_def f
     let p := (swap_iso_of_iso Liso)
-    let p' := @OrderIso.symm L _ (LinOrd_swap L).str.toLE
-              (LinOrd_swap (dLexOrd WO f)).str.toLE p
+    let p' := @OrderIso.symm L _ (linOrd_swap L).str.toLE
+              (linOrd_swap (dLexOrd WO f)).str.toLE p
     apply hausdorffScattered_of_orderIso p'
-    apply HausdorffScattered.lex_sum (LinOrd_swap WO) ?_ map IH _ iso
+    apply HausdorffScattered.lex_sum (linOrd_swap WO) ?_ map IH _ iso
     · rcases hWO with WO | RWO
       · right; apply WO
       · left;
@@ -250,7 +250,7 @@ lemma hausdorffScattered_rel_equivalence {L : LinOrd}: Equivalence (@hausdorffSc
         (hausdorffScattered_rel_symm scat_yz) (hausdorffScattered_rel_symm scat_xy))
 
 /-- if hausdorffScattered_rel x y, then the LinOrd restricted to [x, y] is also HausdorffScatteredtered -/
-lemma hausdorffScattered_to_closed_interval {L : LinOrd} (x y : L) (h : hausdorffScattered_rel x y):
+lemma hausdorffScattered_closed_interval {L : LinOrd} (x y : L) (h : hausdorffScattered_rel x y):
   HausdorffScattered (LinOrd.mk {a | (x ≤ a ∧ a ≤ y) ∨ (y ≤ a ∧ a ≤ x)}) := by
   wlog hxy : x ≤ y
   · push_neg at hxy
@@ -302,15 +302,16 @@ lemma hausdorffScattered_to_closed_interval {L : LinOrd} (x y : L) (h : hausdorf
         exact hc.left
 
 /-- if (x, y] is HausdorffScatteredtered, so is [x, y) -/
-lemma hausdorffScattered_of_interval_flip {L : LinOrd} (x y : L) (h : hausdorffScattered_rel x y):
+lemma hausdorffScattered_interval_flip_bounds {L : LinOrd}
+  (x y : L) (h : hausdorffScattered_rel x y):
   HausdorffScattered (LinOrd.mk {a | (x ≤ a ∧ a < y) ∨ (y ≤ a ∧ a < x)}) := by
-  apply hausdorffScattered_of_subset' _ (hausdorffScattered_to_closed_interval x y h)
+  apply hausdorffScattered_of_subset' _ (hausdorffScattered_closed_interval x y h)
   rintro a (⟨h1, h2⟩ | ⟨h1, h2⟩)
   · left; exact And.intro h1 (le_of_lt h2)
   · right; exact And.intro h1 (le_of_lt h2)
 
 /-- any order which is not a NoMaxOrder has a maximum element-/
-lemma max_of_NoMaxOrder {L : LinOrd} (hm : ¬ NoMaxOrder L):
+lemma max_of_noMaxOrder {L : LinOrd} (hm : ¬ NoMaxOrder L):
   ∃ a : L, ∀ b, b ≤ a := by
   by_contra! h
   apply hm
@@ -319,18 +320,18 @@ lemma max_of_NoMaxOrder {L : LinOrd} (hm : ¬ NoMaxOrder L):
   rcases h a with ⟨b ,hb⟩
   use b
 
---//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+--//////////////////////////////////////////////////////////////////////////////////////////////////////////
 -- Hausdorff's theorem
---//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+--//////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /-- Given a LinOrd and a subset I, map each element a of I to all the elements of the
     LinOrd less than a, but not less than any earlier element of I -/
-def part_fxn {L : LinOrd} {I : Set L} (a : I) := {z : L | z ≤ a ∧ ∀ a' < a, a' < z}
+def partition_mk {L : LinOrd} {I : Set L} (a : I) := {z : L | z ≤ a ∧ ∀ a' < a, a' < z}
 
-/-- If the indexing set is WF cofinal, the part_fxn partitions the LinOrd -/
-lemma part_fxn_prop {L : LinOrd} {Cof : Set L}
+/-- If the indexing set is WF cofinal, the partition_mk partitions the LinOrd -/
+lemma partition_mk_of_cofinal {L : LinOrd} {Cof : Set L}
   (hCof : IsCofinal Cof ∧ Cof.WellFoundedOn fun x1 x2 ↦ x1 < x2)
-  (nomax : NoMaxOrder L) : ∀ z : L, ∃! (a : Cof), z ∈ part_fxn a := by
+  (nomax : NoMaxOrder L) : ∀ z : L, ∃! (a : Cof), z ∈ partition_mk a := by
   intro z
   let final := {a : Cof | z ≤ a}
   have final_nonempt : final.Nonempty := by
@@ -356,11 +357,11 @@ lemma part_fxn_prop {L : LinOrd} {Cof : Set L}
       exact hy.right lb contra
     · exact le_of_not_lt (hlb2 y hy.left)
 
-/-- Given a LinOrd and a WF cofinal subset, if the output of the part_fxn on that
+/-- Given a LinOrd and a WF cofinal subset, if the output of the partition_mk on that
     subset is always HausdorffScattered, then L is also HausdorffScattered -/
-lemma hausdorffScattered_of_WF_parition (L : LinOrd) (Cof : Set L)
+lemma hausdorffScattered_of_wellFounded_cofinal_parition (L : LinOrd) (Cof : Set L)
   (hCof : IsCofinal Cof ∧ Cof.WellFoundedOn fun x1 x2 ↦ x1 < x2)
-  (all_HausdorffScattered : ∀ (w : LinOrd.mk Cof), HausdorffScattered (LinOrd.mk (part_fxn w)))
+  (all_HausdorffScattered : ∀ (w : LinOrd.mk Cof), HausdorffScattered (LinOrd.mk (partition_mk w)))
   (nomax : NoMaxOrder L):
   HausdorffScattered L := by
   have : IsWellOrder Cof _ :=
@@ -369,9 +370,9 @@ lemma hausdorffScattered_of_WF_parition (L : LinOrd) (Cof : Set L)
               toIsWellFounded := by
               constructor
               exact hCof.right }
-  let J (a : Cof) := LinOrd.mk (part_fxn a)
+  let J (a : Cof) := LinOrd.mk (partition_mk a)
   let Jiso : L ≃o dLexOrd (LinOrd.mk Cof) J := by
-    apply @iso_of_sigma_partition L (LinOrd.mk Cof) part_fxn (part_fxn_prop hCof nomax)
+    apply @iso_of_sigma_partition L (LinOrd.mk Cof) partition_mk (partition_mk_of_cofinal hCof nomax)
     intro a b hab c hc d hd
     exact lt_of_le_of_lt hc.left (hd.right a hab)
   apply HausdorffScattered.lex_sum (LinOrd.mk Cof) ?_ J ?_ L Jiso
@@ -379,18 +380,18 @@ lemma hausdorffScattered_of_WF_parition (L : LinOrd) (Cof : Set L)
   · exact fun w ↦ all_HausdorffScattered w
 
 /-- given a,b in a LinOrd, the set of x ∈ (a, b] such that a and x are related is HausdorffScattered -/
-lemma aux_dense_quotient {L : LinOrd} {a b : L} :
+lemma aux_dense_quot {L : LinOrd} {a b : L} :
   HausdorffScattered (LinOrd.mk {x | a < x ∧ x ≤ b ∧ hausdorffScattered_rel a x}) := by
   let A := { x | a < x ∧ x ≤ b ∧ hausdorffScattered_rel a x}
   rcases @exists_cofinal_wellFoundedOn_subset A inferInstance with ⟨Cof, hCof⟩
   rcases Classical.em (NoMaxOrder (LinOrd.mk A)) with nomax | max
-  · apply hausdorffScattered_of_WF_parition _ Cof hCof ?_ nomax
+  · apply hausdorffScattered_of_wellFounded_cofinal_parition _ Cof hCof ?_ nomax
     intro w
     let k := hausdorffScattered_of_subset'' _ A w.1.2.right.right
     apply @hausdorffScattered_of_subset' (LinOrd.mk A) _ k { x : A | x ≤ ↑w ∧ ∀ a' < w, ↑a' < x }
     intro x ⟨hx1, hx2⟩
     left; exact And.intro x.2.left hx1
-  · rcases (max_of_NoMaxOrder max) with ⟨m, hm⟩
+  · rcases (max_of_noMaxOrder max) with ⟨m, hm⟩
     let p := m.2.right.right
     apply hausdorffScattered_of_subset' _ p
     intro x ⟨hx1, hx2, hx3⟩
@@ -406,13 +407,13 @@ lemma subtype_swap {α : Type*} {L : LinearOrder α} {p : α → Prop}:
 
 /-- If a and b are related in the LinOrd L, they are also related from the
     perspective of the swapped version of L -/
-lemma hausdorffScattered_rel_in_L_swap {L : LinOrd} (a b : L) :
-  @hausdorffScattered_rel L a b → @hausdorffScattered_rel (LinOrd_swap L) a b := by
+lemma hausdorffScattered_rel_swap {L : LinOrd} (a b : L) :
+  @hausdorffScattered_rel L a b → @hausdorffScattered_rel (linOrd_swap L) a b := by
   simp only [hausdorffScattered_rel]
   intro h
   rw [subtype_swap]
-  let p := hausdorffScattered_of_swap (hausdorffScattered_of_interval_flip a b h)
-  simp [LinOrd_swap] at p
+  let p := hausdorffScattered_swap (hausdorffScattered_interval_flip_bounds a b h)
+  simp [linOrd_swap] at p
   apply hausdorffScattered_of_orderIso _ p
   exact {
     toFun := fun x => ⟨x,
@@ -430,7 +431,7 @@ lemma hausdorffScattered_rel_in_L_swap {L : LinOrd} (a b : L) :
     map_rel_iff' := by intro _ _; trivial }
 
 /-- The quotient of HausdorffScattered is dense -/
-lemma dense_quotient {L : LinOrd} {a b : L} (h : ¬ hausdorffScattered_rel a b) (hl : a < b) :
+lemma hausdorffScattered_rel_dense_quot {L : LinOrd} {a b : L} (h : ¬ hausdorffScattered_rel a b) (hl : a < b) :
   ∃ c, a < c ∧ c ≤ b ∧ ¬ hausdorffScattered_rel a c ∧ ¬ hausdorffScattered_rel c b := by
   by_contra! contra
   -- split the interval into elements related to a and elements related to b
@@ -466,22 +467,22 @@ lemma dense_quotient {L : LinOrd} {a b : L} (h : ¬ hausdorffScattered_rel a b) 
   -- B ontop of A
   apply h
   apply hausdorffScattered_of_two_dLexOrd _ (LinOrd.mk A) (LinOrd.mk B)
-  · exact aux_dense_quotient
+  · exact aux_dense_quot
   · -- use the previous case to show that the result holds for modified interval bounds
     have : HausdorffScattered (LinOrd.mk { x // a ≤ x ∧ x < b ∧ hausdorffScattered_rel x b }) := by
-      apply @hausdorffScattered_of_swap
-        (LinOrd_swap (LinOrd.mk { x // a ≤ x ∧ x < b ∧ hausdorffScattered_rel x b }))
-      apply hausdorffScattered_of_orderIso _ (@aux_dense_quotient (LinOrd_swap L) b a)
+      apply @hausdorffScattered_swap
+        (linOrd_swap (LinOrd.mk { x // a ≤ x ∧ x < b ∧ hausdorffScattered_rel x b }))
+      apply hausdorffScattered_of_orderIso _ (@aux_dense_quot (linOrd_swap L) b a)
       exact {
         toFun := fun x => ⟨x,
           by
           split_ands; exact x.2.right.left ; exact x.2.left
-          exact hausdorffScattered_rel_in_L_swap x.1 b
+          exact hausdorffScattered_rel_swap x.1 b
             (Equivalence.symm hausdorffScattered_rel_equivalence x.2.right.right)⟩
         invFun := fun x => ⟨x,
           by
             split_ands; exact x.2.right.left ; exact x.2.left
-            exact hausdorffScattered_rel_in_L_swap b x.1
+            exact hausdorffScattered_rel_swap b x.1
               (Equivalence.symm hausdorffScattered_rel_equivalence x.2.right.right)⟩
         left_inv := by intro _; trivial
         right_inv := by intro _; trivial
@@ -535,11 +536,11 @@ lemma dense_quotient {L : LinOrd} {a b : L} (h : ¬ hausdorffScattered_rel a b) 
 
 /-- Given a LinOrd where all elements are related by hausdorffScattered_rel, any final segment
     of the LinOrd is HausdorffScatteredttered -/
-lemma ind_scat_of_fin_seg_of_one_class {X : LinOrd}
+lemma hausdorffScattered_of_final_segment_of_one_class (X : LinOrd)
   (x : X) (one_class : ∀ x y : X, hausdorffScattered_rel x y) : HausdorffScattered (LinOrd.mk {x_1 // x < x_1}) := by
   rcases @exists_cofinal_wellFoundedOn_subset {x_1 // x_1 > x} inferInstance with ⟨Cof, hCof⟩
   rcases Classical.em (NoMaxOrder (LinOrd.mk {x_1 // x < x_1})) with nomax | max
-  · apply hausdorffScattered_of_WF_parition (LinOrd.mk {x_1 // x < x_1}) Cof hCof ?_ nomax
+  · apply hausdorffScattered_of_wellFounded_cofinal_parition (LinOrd.mk {x_1 // x < x_1}) Cof hCof ?_ nomax
     intro w
     specialize one_class x w
     let p :=  hausdorffScattered_of_subset'' ((fun x_1 => x < x_1 ∧ x_1 ≤ ↑↑w ∨ ↑↑w < x_1 ∧ x_1 ≤ x))
@@ -551,7 +552,7 @@ lemma ind_scat_of_fin_seg_of_one_class {X : LinOrd}
     left; exact And.intro ha haw.left
   · rcases isEmpty_or_nonempty (LinOrd.mk { x_1 // x < x_1 }) with empt | nonempt
     · exact hausdorffScattered_empty _ empt
-    rcases (max_of_NoMaxOrder max) with ⟨m, hm⟩
+    rcases (max_of_noMaxOrder max) with ⟨m, hm⟩
     apply hausdorffScattered_of_orderIso ?_ (one_class x m)
     exact {
       toFun := fun y =>
@@ -569,7 +570,7 @@ lemma ind_scat_of_fin_seg_of_one_class {X : LinOrd}
       map_rel_iff' := by intro _; simp }
 
 /-- The class of Scattered orders is the same as the class of HausdorffScattered orders-/
-theorem Hausdorff_Scattered_Orders (X : LinOrd): Scattered X ↔ HausdorffScattered X := by
+theorem hausdorff_scattered_orders (X : LinOrd): Scattered X ↔ HausdorffScattered X := by
   constructor
   · intro X_scat
     rcases Classical.em (Nonempty X) with nonempt | empt; swap
@@ -577,16 +578,16 @@ theorem Hausdorff_Scattered_Orders (X : LinOrd): Scattered X ↔ HausdorffScatte
       exact hausdorffScattered_empty X empt
     rcases Classical.em (∀ x y : X, hausdorffScattered_rel x y) with one_class | mult_class
     · rcases Classical.exists_true_of_nonempty nonempt with ⟨x⟩
-      have part1 : HausdorffScattered (LinOrd.mk {x_1 // x < x_1}) := by
-        exact @ind_scat_of_fin_seg_of_one_class _ x one_class
-      have part2 : HausdorffScattered (LinOrd.mk {x_1 // x_1 < x}) := by
-        let X' := LinOrd_swap X
+      have final_HS : HausdorffScattered (LinOrd.mk {x_1 // x < x_1}) := by
+        exact hausdorffScattered_of_final_segment_of_one_class _ x one_class
+      have initial_HS : HausdorffScattered (LinOrd.mk {x_1 // x_1 < x}) := by
+        let X' := linOrd_swap X
         have X_eq: X.carrier = X'.carrier := by exact rfl
 
-        let L : LinOrd := LinOrd_swap (LinOrd.mk { x_1 // x_1 < x })
+        let L : LinOrd := linOrd_swap (LinOrd.mk { x_1 // x_1 < x })
         let M : LinOrd := LinOrd.mk { x_1 : X' // @LT.lt X' _ (X_eq ▸ x) x_1}
 
-        apply @hausdorffScattered_of_swap L
+        apply @hausdorffScattered_swap L
 
         let iso : @OrderIso L M L.str.toLE M.str.toLE := by
           exact {
@@ -597,10 +598,10 @@ theorem Hausdorff_Scattered_Orders (X : LinOrd): Scattered X ↔ HausdorffScatte
           map_rel_iff' := by intro _ _; simp only [Equiv.coe_fn_mk] }
 
         apply hausdorffScattered_of_orderIso iso
-        apply @ind_scat_of_fin_seg_of_one_class X' (X_eq ▸ x)
+        apply hausdorffScattered_of_final_segment_of_one_class X' (X_eq ▸ x)
 
         intro x y
-        let p := hausdorffScattered_of_swap (@hausdorffScattered_of_interval_flip X y x (one_class y x))
+        let p := hausdorffScattered_swap (@hausdorffScattered_interval_flip_bounds X y x (one_class y x))
         apply hausdorffScattered_of_orderIso _ p
 
         -- the underlying sets in the goal are equal
@@ -634,12 +635,12 @@ theorem Hausdorff_Scattered_Orders (X : LinOrd): Scattered X ↔ HausdorffScatte
         | Three.one => {x}
         | Three.two =>  { x_1 | x < x_1 }
 
-      apply HausdorffScattered.lex_sum Three.L (Or.inl (@Finite.to_wellFoundedLT Three Three.finite).1)
+      apply HausdorffScattered.lex_sum Three.L (Or.inl (@Finite.to_wellFoundedLT Three Three.instFinite).1)
         (fun w => LinOrd.mk (f w))
       · intro w; cases w
-        · exact part2
+        · exact initial_HS
         · exact hausdorffScattered_of_singleton x
-        · exact part1
+        · exact final_HS
       · apply (iso_of_sigma_partition f _ _)
         · intro z
           apply existsUnique_of_exists_of_unique
@@ -677,7 +678,7 @@ theorem Hausdorff_Scattered_Orders (X : LinOrd): Scattered X ↔ HausdorffScatte
       have : DenselyOrdered reps := by
         constructor
         intro x y hxy
-        have nequiv : ¬ hausdorffScattered_rel x.1 y := by
+        have nrel : ¬ hausdorffScattered_rel x.1 y := by
           rcases x.2, y.2 with ⟨⟨x', hx'⟩, ⟨y', hy'⟩⟩
           simp only [f] at hx' hy'
           have : ⟦x.1⟧ = x' ∧ ⟦y.1⟧ = y' := by
@@ -689,7 +690,7 @@ theorem Hausdorff_Scattered_Orders (X : LinOrd): Scattered X ↔ HausdorffScatte
           simp only [Quotient.out_inj, Quotient.eq] at hne
           apply hne
 
-        rcases dense_quotient nequiv hxy with ⟨c, hc1, hc2, hc3, hc4⟩
+        rcases hausdorffScattered_rel_dense_quot nrel hxy with ⟨c, hc1, hc2, hc3, hc4⟩
         let z : reps := ⟨(f ⟦c⟧), by simp [reps]⟩
         have hzc : hausdorffScattered_rel z c := by
           apply Quotient.mk_out c
@@ -717,7 +718,7 @@ theorem Hausdorff_Scattered_Orders (X : LinOrd): Scattered X ↔ HausdorffScatte
     induction' X_scat_prop with lo x single_lo lo_lex WF_RWF ind scat_prop_of_ind L Liso is_scat_f
     · -- singleton case
       intro A A_ord props
-      have A_s : A.Subsingleton := by
+      have A_subsingl : A.Subsingleton := by
         apply @Set.subsingleton_of_subset_singleton ↑lo x
         rw [single_lo]
         exact Set.subset_univ A
@@ -727,7 +728,7 @@ theorem Hausdorff_Scattered_Orders (X : LinOrd): Scattered X ↔ HausdorffScatte
       have hay: a.1 < y := by
         exact ha
       apply ne_of_lt hay
-      exact symm (A_s hy a.2)
+      exact symm (A_subsingl hy a.2)
 
     · -- inductive case
       apply scatttered_of_iso_to_scattered L (dLexOrd lo_lex ind) Liso
@@ -754,12 +755,12 @@ theorem Hausdorff_Scattered_Orders (X : LinOrd): Scattered X ↔ HausdorffScatte
                 · rcases h1 with ⟨h2, _⟩
                   exact le_of_eq h2 }
 
-        have lo_scat: Scattered lo_lex := by
+        have lo_scattered : Scattered lo_lex := by
           rcases WF_RWF with WF | RWF
           · apply scattered_of_wellFounded lo_lex WF
           · apply scattered_of_rev_wellFounded lo_lex RWF
 
-        apply not_nonempty_iff.mpr ((scattered_iff_not_embeds_rat lo_lex).mp lo_scat)
+        apply not_nonempty_iff.mpr ((scattered_iff_not_embeds_rat lo_lex).mp lo_scattered)
         rcases props with ⟨p1, p2, p3, p4, p5⟩
         rcases Order.iso_of_countable_dense ℚ A with ⟨g⟩
         rw [<-exists_true_iff_nonempty]
@@ -826,7 +827,7 @@ theorem Hausdorff_Scattered_Orders (X : LinOrd): Scattered X ↔ HausdorffScatte
 
         let B' := (fun b => b.1) '' B
         let g' : B' ↪o (ind (f a)) :=
-          embed_dlexord (f a) B'
+          embed_dLexOrd (f a) B'
           (by
             rintro b1 ⟨b2, hb⟩
             rw [<-hb.right]

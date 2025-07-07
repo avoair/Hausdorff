@@ -3,7 +3,6 @@ import Mathlib.Order.Category.LinOrd
 import Mathlib.Data.Sigma.Order
 import Mathlib.Data.Sigma.Lex
 
-
 open Classical
 universe u
 
@@ -12,15 +11,10 @@ abbrev dLexOrd (α : LinOrd) (β : α.carrier → LinOrd) : LinOrd :=
   { carrier := Σₗ w, (β w), str := Sigma.Lex.linearOrder }
 
 /-- reverse the ordering on a LinOrd -/
-abbrev LinOrd_swap (α : LinOrd) : LinOrd := { carrier := α, str := α.str.swap }
-
-/-- LinOrd_swap is a self-inverse -/
-lemma LinOrd_swap_swap {L : LinOrd}: LinOrd_swap (LinOrd_swap L) = L := by
-  simp only [LinOrd_swap]
-  trivial
+abbrev linOrd_swap (α : LinOrd) : LinOrd := { carrier := α, str := α.str.swap }
 
 /-- If subset of a dLexOrd is contained in a single suborder, it embeds that suborder -/
-def embed_dlexord {α : LinOrd} {β : α.carrier → LinOrd} (a : α.carrier)
+def embed_dLexOrd {α : LinOrd} {β : α.carrier → LinOrd} (a : α.carrier)
     (B : Set (dLexOrd α β)) (h : ∀ b ∈ B, b.1 = a) :
     B ↪o β a where
   toFun := fun x => h x.1 x.2 ▸ x.1.2
@@ -100,7 +94,7 @@ noncomputable instance : LinearOrder Two where
 noncomputable abbrev L : LinOrd.{u} := {carrier := Two, str := inferInstance}
 
 /-- Two is finite -/
-lemma finite : Finite Two := by
+lemma instFinite : Finite Two := by
     refine finite_iff_exists_equiv_fin.mpr ?_
     use 2
     rw [<-exists_true_iff_nonempty]
@@ -163,7 +157,7 @@ noncomputable instance : LinearOrder Three where
 noncomputable abbrev L : LinOrd.{u} := {carrier := Three, str := inferInstance}
 
 /-- Three is finite -/
-lemma finite : Finite Three := by
+lemma instFinite : Finite Three := by
     refine finite_iff_exists_equiv_fin.mpr ?_
     use 3
     rw [<-exists_true_iff_nonempty]
@@ -187,20 +181,16 @@ lemma finite : Finite Three := by
 end Three
 
 
-/-- helper functions to simplify notation in proofs with lex sums
+/-- helper function to prevent repeated constructions in proofs with lex sums
     involving Two as the index set -/
-def g' (M N: LinOrd) : Two → LinOrd
+def two_map (M N: LinOrd) : Two → LinOrd
   | Two.zero => M
   | Two.one => N
-
--- def g {L : LinOrd} (M N: Set L) : Two → Set L
---   | Two.zero => M
---   | Two.one => N
 
 /-- conditions for showing isomorphism to a Lex sum with two elements -/
 noncomputable def Two_iso_helper {L : LinOrd.{u}} (A B C : Set L)
   (h1 : A = B ∪ C) (h2 : ∀ c ∈ C, ∀ b ∈ B, b < c) :
-  LinOrd.mk A ≃o dLexOrd Two.L (g' (LinOrd.mk B) (LinOrd.mk C)) where
+  LinOrd.mk A ≃o dLexOrd Two.L (two_map (LinOrd.mk B) (LinOrd.mk C)) where
   toFun := fun ⟨x, hx⟩ =>
     if h : x ∈ B then ⟨Two.zero, ⟨x, h⟩⟩
     else ⟨Two.one, ⟨x, or_iff_not_imp_right.mp (subset_of_eq h1 hx).symm h⟩⟩
@@ -218,7 +208,7 @@ noncomputable def Two_iso_helper {L : LinOrd.{u}} (A B C : Set L)
     · simp
     · simp only [Subtype.coe_eta, dite_eq_right_iff];
       intro h
-      simp only [g'] at x2
+      simp only [two_map] at x2
       by_contra;
       exact (lt_irrefl x2.1) (h2 x2 x2.2 x2.1 h)
   map_rel_iff' := by
@@ -277,10 +267,10 @@ def OrderIso_restrict {α β : Type*} [LE α] [LE β] (f : α ≃o β) (A : Set 
 
 /-- A swapped dLexOrd is isomorphic to swapping the indexing order and each suborder -/
 def Sigma_swap_alt_def {L : LinOrd} (i : L → LinOrd) :
-  @OrderIso (LinOrd_swap (dLexOrd L i)).carrier (dLexOrd (LinOrd_swap L)
-  (fun l => LinOrd_swap (i l))).carrier
-  (LinOrd_swap (dLexOrd L i)).str.toLE (dLexOrd (LinOrd_swap L)
-  (fun l => LinOrd_swap (i l))).str.toLE where
+  @OrderIso (linOrd_swap (dLexOrd L i)).carrier (dLexOrd (linOrd_swap L)
+  (fun l => linOrd_swap (i l))).carrier
+  (linOrd_swap (dLexOrd L i)).str.toLE (dLexOrd (linOrd_swap L)
+  (fun l => linOrd_swap (i l))).str.toLE where
   toFun := fun x => x
   invFun := fun x => x
   left_inv := congrFun rfl
@@ -310,7 +300,7 @@ def Sigma_swap_alt_def {L : LinOrd} (i : L → LinOrd) :
         apply (this a.1 b.1 a.2 b.2 _ _).mpr h3
 
 /-- If two LinOrds are isomorphic, so are their swapped orders -/
-def swap_iso_of_iso {L M : LinOrd} (f : L ≃o M) : LinOrd_swap L ≃o LinOrd_swap M where
+def swap_iso_of_iso {L M : LinOrd} (f : L ≃o M) : linOrd_swap L ≃o linOrd_swap M where
   toFun := fun x => f x
   invFun := fun x => f.symm x
   left_inv := by intro x; exact OrderIso.symm_apply_apply f x
@@ -377,7 +367,7 @@ noncomputable def iso_of_sigma_partition {L S : LinOrd} (j : S → Set L)
 
 -- noncomputable def Two_iso_helper' {L : LinOrd.{u}} (A B C : Set L)
 --   (h1 : A = B ∪ C) (h2 : ∀ c ∈ C, ∀ b ∈ B, b < c) :
---   LinOrd.mk A ≃o dLexOrd Two.L (g' (LinOrd.mk B) (LinOrd.mk C)) := by
+--   LinOrd.mk A ≃o dLexOrd Two.L (two_map (LinOrd.mk B) (LinOrd.mk C)) := by
 --   let f := @iso_of_sigma_partition (LinOrd.mk A) Two.L.{u} (g {x | x.1 ∈ B} {x | x.1 ∈ C}) ?_ ?_
 --   simp at f
 --   apply OrderIso.trans f
