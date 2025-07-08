@@ -363,6 +363,45 @@ noncomputable def iso_of_sigma_partition {L S : LinOrd} (j : S → Set L)
       · subst x
         right; simp
 
+/-- Order isomorphism preserves unboundedness -/
+lemma unbounded_of_iso_from_unbounded {α β: Type*} [Preorder α] [Preorder β] (h₁: NoMinOrder α)
+  (h₂: NoMaxOrder α) (h₃ : Nonempty (α ≃o β)) : NoMinOrder β ∧ NoMaxOrder β := by
+  rcases h₃ with ⟨f⟩
+  constructor
+  · constructor
+    intro x
+    rcases h₁.exists_lt (f.symm x) with ⟨y, hy⟩
+    use f y
+    rw [<- OrderIso.symm_apply_apply f y, f.symm.lt_iff_lt] at hy
+    exact hy
+  · constructor
+    intro x
+    rcases h₂.exists_gt (f.symm x) with ⟨y, hy⟩
+    use f y
+    rw [<- OrderIso.symm_apply_apply f y, f.symm.lt_iff_lt] at hy
+    exact hy
+
+/-- The composition of order embeddings is an order embedding -/
+def comp_is_orderEmb {α β γ: Type*} [Preorder α] [Preorder β] [Preorder γ] (g: β ↪o γ)
+  (f: α ↪o β) : α ↪o γ :=
+  { toFun := g ∘ f
+    inj' := by
+      apply (EmbeddingLike.comp_injective (⇑f) g).mpr f.inj'
+    map_rel_iff' := by intro _ _; simp }
+
+/-- Order isomoprhism preserves (order) density -/
+lemma dense_of_iso_from_dense {α β: Type*} [Preorder α] [Preorder β] (h: DenselyOrdered α) :
+  Nonempty (α ≃o β) → DenselyOrdered β := by
+  intro h
+  rcases h with ⟨f⟩
+  constructor
+  intro x y h₁
+  rcases h.dense (f.symm x) (f.symm y) (f.symm.lt_iff_lt.mpr h₁) with ⟨x, h₂⟩
+  use (f x)
+  rw [<-OrderIso.symm_apply_apply f x, f.symm.lt_iff_lt, f.symm.lt_iff_lt] at h₂
+  exact h₂
+
+
 -- below is an attempt to prove Two_iso_helper as a corrolary of iso_of_sigma_partition
 
 -- noncomputable def Two_iso_helper' {L : LinOrd.{u}} (A B C : Set L)

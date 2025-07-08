@@ -4,53 +4,11 @@ import Mathlib.Order.Category.LinOrd
 import Mathlib.Data.Sigma.Order
 import Mathlib.Data.Sigma.Lex
 import Mathlib.Order.Basic
-import Hausdorff.WO_cofinal_subset
+import Hausdorff.WellOrderedCofinalSubset
+import Hausdorff.Isomorphisms
 
 open Classical
 universe u
-
-/-- The composition of order embeddings is an order embedding -/
-def comp_is_orderEmb {α β γ: Type*} [Preorder α] [Preorder β] [Preorder γ] (g: β ↪o γ)
-  (f: α ↪o β) : α ↪o γ :=
-  { toFun := g ∘ f
-    inj' := by
-      apply (EmbeddingLike.comp_injective (⇑f) g).mpr f.inj'
-    map_rel_iff' := by intro _ _; simp }
-
-/-- Order isomoprhism preserves (order) density -/
-lemma dense_of_iso_from_dense {α β: Type*} [Preorder α] [Preorder β] (h: DenselyOrdered α) :
-  Nonempty (α ≃o β) → DenselyOrdered β := by
-  intro h
-  rcases h with ⟨f⟩
-  constructor
-  intro a b hab
-  rcases h.dense (f.symm a) (f.symm b) (f.symm.lt_iff_lt.mpr hab) with ⟨x, hx⟩
-  use (f x)
-  rw [<-OrderIso.symm_apply_apply f x, f.symm.lt_iff_lt, f.symm.lt_iff_lt] at hx
-  exact hx
-
-/-- Order isomorphism preserves unboundedness -/
-lemma unbounded_of_iso_from_unbounded {α β: Type*} [Preorder α] [Preorder β] (h: NoMinOrder α)
-  (h1: NoMaxOrder α): Nonempty (α ≃o β) → NoMinOrder β ∧ NoMaxOrder β := by
-  intro h
-  rcases h with ⟨f⟩
-  constructor
-  · constructor
-    intro a
-    rcases h.exists_lt (f.symm a) with ⟨x, hx⟩
-    use f x
-    rw [<-OrderIso.symm_apply_apply f x, f.symm.lt_iff_lt] at hx
-    exact hx
-  · constructor
-    intro a
-    rcases h1.exists_gt (f.symm a) with ⟨x, hx⟩
-    use f x
-    rw [<-OrderIso.symm_apply_apply f x, f.symm.lt_iff_lt] at hx
-    exact hx
-
---/////////////////////////////////////////////////////////////////////////////////////////
---  Definitions + Lemmas about new definitions -
---/////////////////////////////////////////////////////////////////////////////////////////
 
 /-- We define scattered from the perspective of Cantor's theorem -/
 def Scattered : LinOrd → Prop := fun (X : LinOrd) =>
