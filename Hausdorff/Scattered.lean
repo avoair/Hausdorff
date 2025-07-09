@@ -11,7 +11,7 @@ open Classical
 universe u
 
 /-- We define scattered from the perspective of Cantor's theorem -/
-def Scattered : LinOrd → Prop := fun (X : LinOrd) =>
+def Scattered (X : LinOrd) : Prop :=
   ∀ (S : Set (X.carrier)),
   let suborder : LinOrd :=
       ({carrier := S,
@@ -93,6 +93,10 @@ lemma scattered_of_wellFounded (X : LinOrd) : WellFounded X.str.lt → Scattered
     exact ha
   · apply empt
     exact props.right.right.right.right
+
+lemma Q_swap : Nonempty (LinOrd.mk ℚ ≃o (linOrd_swap (LinOrd.mk ℚ))) := by
+  exact Order.iso_of_countable_dense ({ carrier := ℚ, str := Rat.linearOrder } : LinOrd)
+    (linOrd_swap { carrier := ℚ, str := Rat.linearOrder })
 
 /-- If X a linear order is scattered, so is its reversal -/
 lemma scattered_swap (X : LinOrd) : Scattered X →

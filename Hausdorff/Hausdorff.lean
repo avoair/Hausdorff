@@ -4,7 +4,7 @@ import Mathlib.Order.Category.LinOrd
 import Mathlib.Data.Sigma.Order
 import Mathlib.Data.Sigma.Lex
 import Mathlib.Data.Setoid.Partition
-import Hausdorff.WO_cofinal_subset
+import Hausdorff.WellOrderedCofinalSubset
 import Hausdorff.Scattered
 import Hausdorff.Isomorphisms
 

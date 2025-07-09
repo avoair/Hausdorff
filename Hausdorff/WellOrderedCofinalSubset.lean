@@ -117,7 +117,7 @@ lemma exists_cofinal_wellFoundedOn_subset :
     have hm₀ : m₀.WellFoundedOn fun x1 x2 => x1 < x2 := Set.WellFoundedOn.insert m.2 a
     let m' : WellFoundedSet α := ⟨m₀, hm₀⟩
 
-    have h :  m ≼ m' := by
+    have h : m ≼ m' := by
       constructor
       · exact Set.subset_insert a (m.1)
       · intro y hy x hx
