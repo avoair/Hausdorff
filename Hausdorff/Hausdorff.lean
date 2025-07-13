@@ -664,7 +664,7 @@ theorem hausdorff_scattered_orders (X : LinOrd): Scattered X ↔ HausdorffScatte
       let reps := Set.range f
 
       by_contra;
-      rw [scattered_iff_not_embeds_rat, <-not_nonempty_iff] at X_scat
+      rw [Scattered, <-not_nonempty_iff] at X_scat
       apply X_scat
       simp only [not_forall] at mult_class
 
@@ -711,148 +711,95 @@ theorem hausdorff_scattered_orders (X : LinOrd): Scattered X ↔ HausdorffScatte
             exact lt_of_le_of_lt hc2 ha1
 
       rcases Order.embedding_from_countable_to_dense ℚ reps with ⟨f1⟩
-      apply Nonempty.intro (comp_is_orderEmb (coeEmb reps) f1)
+      apply Nonempty.intro (OrderEmbedding_comp f1 (coeEmb reps))
 
 -- RIGHT TO LEFT
   · intro X_scat_prop
     induction' X_scat_prop with lo x single_lo lo_lex WF_RWF ind scat_prop_of_ind L Liso is_scat_f
     · -- singleton case
-      intro A A_ord props
-      have A_subsingl : A.Subsingleton := by
-        apply @Set.subsingleton_of_subset_singleton ↑lo x
+      by_contra h
+      rw [Scattered, <-not_nonempty_iff, not_not] at h
+      rcases h with ⟨f⟩
+      apply Rat.zero_ne_one
+      apply @f.inj' 0 1
+      have (y : lo) : y ∈ ({x} : Set lo) := by
         rw [single_lo]
-        exact Set.subset_univ A
-      rcases props.right.right.right.right with ⟨y, hy⟩
-      rcases (props.right.right.left).exists_lt ⟨y, hy⟩ with ⟨a, ha⟩
-
-      have hay: a.1 < y := by
-        exact ha
-      apply ne_of_lt hay
-      exact symm (A_subsingl hy a.2)
-
+        exact Set.mem_univ y
+      exact Eq.trans (this (f 0)) (this (f 1)).symm
     · -- inductive case
       apply scatttered_of_iso_to_scattered L (dLexOrd lo_lex ind) Liso
-
-      intro A A_ord props
-      let f : A → lo_lex := fun x => x.val.1 -- map elements to their position in the larger well ordering
-
-      rcases Decidable.em (Function.Injective f) with inj | ninj
-      · -- assume every suborder is hit at most once
-        -- f takes an element of the sigma order and returns its position is the WO/RWO
-        let f : A ↪o lo_lex.carrier :=
-          { toFun := fun x => (x.val).fst,
-            inj' := inj
-            map_rel_iff' := by
-              intro a b
-              constructor
-              · intro h
-                rcases lt_or_eq_of_le h with h1 | h1
-                · exact Sigma.Lex.le_def.mpr (Or.inl h1)
-                · exact le_of_eq (inj h1)
-              · intro h
-                rcases Sigma.Lex.le_def.mp h with h1 | h1
-                · exact le_of_lt h1
-                · rcases h1 with ⟨h2, _⟩
-                  exact le_of_eq h2 }
-
-        have lo_scattered : Scattered lo_lex := by
-          rcases WF_RWF with WF | RWF
-          · apply scattered_of_wellFounded lo_lex WF
-          · apply scattered_of_rev_wellFounded lo_lex RWF
-
-        apply not_nonempty_iff.mpr ((scattered_iff_not_embeds_rat lo_lex).mp lo_scattered)
-        rcases props with ⟨p1, p2, p3, p4, p5⟩
-        rcases Order.iso_of_countable_dense ℚ A with ⟨g⟩
-        rw [<-exists_true_iff_nonempty]
-        use comp_is_orderEmb f (OrderIso.toOrderEmbedding g)
-
-      · -- assume there exists a suborder with contribuing two elements
-        rw [Function.not_injective_iff] at ninj
-        have : ∃ a b, f a = f b ∧ a < b := by -- essentially WLOG x < y
-          rcases ninj with ⟨x, y, hxy⟩
-          rcases (ne_iff_lt_or_gt.mp hxy.right) with hgt | hlt
-          · use x, y; exact And.intro hxy.left hgt
-          · use y, x; exact And.intro (Eq.symm hxy.left) hlt
-
-        rcases this with ⟨a, b, hab⟩
-        let B := {y | a < y ∧ y < b}
-        -- we first show that ℚ embeds into an interval of itself
-        have A_iso_B: Nonempty (A ≃o B) := by
-          have p1 : Countable B := by
-            apply @Subtype.countable _ props.left
-          have p2 : DenselyOrdered B := by
+      by_contra h
+      rw [Scattered, <-not_nonempty_iff, not_not] at h
+      rcases h with ⟨f⟩
+      let f' (x) := (f x).1
+      rcases Decidable.em (Function.Injective f') with inj | ninj
+      · have : Scattered lo_lex := by
+          rcases WF_RWF with h₁ | h₁
+          · exact scattered_of_wellFounded lo_lex h₁
+          · exact scattered_of_rev_wellFounded lo_lex h₁
+        apply not_nonempty_iff.mpr this
+        exact Nonempty.intro {
+          toFun := f'
+          inj' := inj
+          map_rel_iff' := by
+            intro a b; simp [f']
             constructor
-            intro c d hcd
-            rcases props.right.left.dense c d hcd with ⟨y, hy⟩
-            have : y ∈ B := by
-              exact And.intro (lt_trans c.2.left hy.left) (lt_trans hy.right d.2.right)
-            use ⟨y, this⟩
-            exact hy
-          have p3 : NoMinOrder B := by
-            constructor
-            intro c
-            rcases props.right.left.dense a c c.2.left with ⟨y, hy⟩
-            have : y ∈ B := by
-              exact And.intro hy.left (lt_trans hy.right c.2.right)
-            use ⟨y, this⟩
-            exact hy.right
-          have p4 : NoMaxOrder B := by
-            constructor
-            intro c
-            rcases props.right.left.dense c b c.2.right with ⟨y, hy⟩
-            use ⟨y, And.intro (lt_trans c.2.left hy.left) hy.right⟩
-            exact hy.left
-          have p5 : Nonempty B := by
-            rcases props.right.left.dense a b hab.right with ⟨y, hy⟩
-            use ⟨y, y.2⟩
-            exact hy
-          rcases props with ⟨_, _, _, _, _⟩
-          apply Order.iso_of_countable_dense
+            · intro h
+              apply (@f.map_rel_iff' a b).mp
+              apply Sigma.Lex.le_def.mpr
+              rcases le_iff_lt_or_eq.mp h with h₁ | h₁
+              · left; exact h₁
+              · right; use h₁
+                cases inj h₁
+                trivial
+            · intro h
+              rcases Sigma.Lex.le_def.mp ((@f.map_rel_iff' a b).mpr h) with h₁ | h₁
+              · exact le_of_lt h₁
+              · rcases h₁ with ⟨h₂, _⟩
+                exact le_of_eq h₂ }
+      · rw [Function.not_injective_iff] at ninj
+        rcases ninj with ⟨x, y, h⟩
+        wlog hxy : x < y
+        · apply this X lo_lex WF_RWF ind scat_prop_of_ind L Liso is_scat_f f y x
+            ((And.intro h.left.symm) h.right.symm)
+            (lt_of_le_of_ne (le_of_not_lt hxy) h.right.symm)
+        let s := {z | x < z ∧ z < y}
+        have sQ : Nonempty (ℚ ≃o s) := by
+          apply @Order.iso_of_countable_dense ℚ s _ _ _ _ _ _ _ ?_ ?_ ?_ ?_ ?_
+          · exact SetCoe.countable s
+          · constructor; intro x' y' h
+            let ⟨z, h₁⟩ := LinearOrderedSemiField.toDenselyOrdered.dense x'.1 y'.1 h
+            use ⟨z, And.intro (lt_trans x'.2.left h₁.left) (lt_trans h₁.right y'.2.right)⟩
+            exact h₁
+          · constructor
+            intro x'
+            let ⟨y', h₁⟩ := LinearOrderedSemiField.toDenselyOrdered.dense x x'.1 x'.2.left
+            use ⟨y', And.intro h₁.left (lt_trans h₁.right x'.2.right)⟩
+            exact h₁.right
+          · constructor
+            intro x'
+            let ⟨y', h₁⟩ := LinearOrderedSemiField.toDenselyOrdered.dense x'.1 y x'.2.right
+            use ⟨y', And.intro (lt_trans x'.2.left h₁.left) h₁.right⟩
+            exact h₁.left
+          · let ⟨z, h₁⟩ := LinearOrderedSemiField.toDenselyOrdered.dense x y hxy
+            exact ⟨z, h₁⟩
+        rcases sQ with ⟨sQf⟩
+        let g' : (f '' s) ↪o (ind (f x).1) :=
+          embed_dLexOrd (f x).1 (f '' s)
+            (by
+              rintro b1 ⟨b2, hb⟩
+              rw [<-hb.right]
+              rcases Sigma.Lex.le_def.mp (f.map_rel_iff'.mpr (le_of_lt hb.left.left))
+                with h₁ | ⟨h₁, _⟩
+              · by_contra
+                apply not_lt_of_le (le_of_eq h.left.symm)
+                rcases Sigma.Lex.le_def.mp (f.map_rel_iff'.mpr (le_of_lt hb.left.right))
+                  with h₂ | ⟨h₂, _⟩
+                · exact lt_trans h₁ h₂
+                · rw [h₂] at h₁
+                  exact h₁
+              · exact h₁.symm)
 
-        -- everything in the inverval B maps to the same suborder
-        have fix_fst (x : B) : x.1.1.1 = f a := by
-          by_contra contra
-          rcases lt_or_gt_of_ne contra with h1 | h1
-          · rcases Sigma.Lex.lt_def.mp (x.2.left) with h2 | h2
-            · exact not_lt_of_le (le_of_lt h1) h2
-            · rcases h2 with ⟨h, hh⟩
-              exact contra (Eq.symm h)
-          · simp only [f] at hab
-            rcases Sigma.Lex.lt_def.mp (x.2.right) with h2 | h2
-            · apply ne_of_gt (lt_trans (GT.gt.lt h1) h2)
-              exact (Eq.symm hab.left)
-            · rcases h2 with ⟨h, hh⟩
-              rw [<-hab.left] at h
-              exact contra h
-
-        let B' := (fun b => b.1) '' B
-        let g' : B' ↪o (ind (f a)) :=
-          embed_dLexOrd (f a) B'
-          (by
-            rintro b1 ⟨b2, hb⟩
-            rw [<-hb.right]
-            exact fix_fst ⟨b2, hb.left⟩)
-
-        let emb : B ↪o B' :=
-          { toFun := fun b => ⟨b.1, by simp [B']⟩
-            inj' := by
-              intro a b hab
-              simp only [Subtype.mk.injEq] at hab
-              ext
-              exact hab
-            map_rel_iff' := by
-              intro a b
-              simp }
-
-        let g : B ↪o (ind (f a)) := comp_is_orderEmb g' emb
-
-        -- compose the isomorphisms/ embeddings
-        rcases props with ⟨p1, p2, p3, p4, p5⟩
-        rcases Order.iso_of_countable_dense ℚ A with ⟨h⟩
-        have h' := OrderIso.toOrderEmbedding h
-        rcases A_iso_B with ⟨i⟩
-        have i' := OrderIso.toOrderEmbedding i
-        have F := comp_is_orderEmb g (comp_is_orderEmb i' h')
-        apply isEmpty_iff.mp
-        apply (scattered_iff_not_embeds_rat (ind (f a))).mp (is_scat_f (f a))
-        exact F
+        apply not_nonempty_iff.mpr (is_scat_f (f x).1)
+        let f' := OrderEmbedding_restrict f s
+        exact Nonempty.intro (OrderEmbedding_comp (OrderEmbedding_comp sQf.toOrderEmbedding f') g')

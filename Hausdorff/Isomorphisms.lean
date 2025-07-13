@@ -34,6 +34,18 @@ def embed_dLexOrd {α : LinOrd} {β : α.carrier → LinOrd} (a : α.carrier)
     rw [Subtype.mk_le_mk, Sigma.Lex.le_def]
     simp
 
+def OrderEmbedding_restrict {α β : Type*} [LE α] [LE β] (f : α ↪o β) (s : Set α) : s ↪o f '' s := by
+  exact {
+    toFun := fun x => ⟨f x, by simp⟩
+    inj' := by
+      intro x y
+      simp only [Subtype.mk.injEq, EmbeddingLike.apply_eq_iff_eq]
+      exact fun a ↦ SetCoe.ext a
+    map_rel_iff' := by
+      intro x y
+      exact RelEmbedding.map_rel_iff f
+  }
+
 /-- Equal sub-LinOrds have HEq linear orderings-/
 lemma LinearOrder_subtype_HEq {L : LinOrd} {P Q : L → Prop} (h : P = Q): HEq (Subtype.instLinearOrder fun x_1 ↦ P x_1)
   (Subtype.instLinearOrder fun x_1 ↦ Q x_1) := by
@@ -382,8 +394,8 @@ lemma unbounded_of_iso_from_unbounded {α β: Type*} [Preorder α] [Preorder β]
     exact hy
 
 /-- The composition of order embeddings is an order embedding -/
-def comp_is_orderEmb {α β γ: Type*} [Preorder α] [Preorder β] [Preorder γ] (g: β ↪o γ)
-  (f: α ↪o β) : α ↪o γ :=
+def OrderEmbedding_comp {α β γ: Type*} [Preorder α] [Preorder β] [Preorder γ]
+  (f: α ↪o β) (g: β ↪o γ) : α ↪o γ :=
   { toFun := g ∘ f
     inj' := by
       apply (EmbeddingLike.comp_injective (⇑f) g).mpr f.inj'
