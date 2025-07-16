@@ -8,6 +8,4 @@
 - updated all files **except** Hausdorff.lean to comply with the style guide
 - Scattered order definition changed to rational embedding definition
 - Proofs throughout modified to rely only on embedding definition of scattered
-- Removed non-terminal simps
-- Updated WellOrderedCofinalSubset to conform to naming conventions
 - Completed documentation throughout all files
