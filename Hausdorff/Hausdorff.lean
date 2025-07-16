@@ -129,7 +129,7 @@ lemma hausdorffScattered_of_subset' {L : LinOrd} (A : Set L)
   HausdorffScattered (LinOrd.mk B) := by
   let C : Set (LinOrd.mk A) := {x | x.1 ∈ B}
   apply @hausdorffScattered_of_orderIso _ (LinOrd.mk C)
-  use subtype_iso A B h1
+  use linOrd_subtype_iso A B h1
   · intro a b
     simp only [EquivLike.coe_coe, map_le_map_iff]
   · exact hausdorffScattered_of_subset _ h
@@ -214,7 +214,7 @@ lemma hausdorffScattered_rel_symm {L : LinOrd} : ∀ {x y : L}, hausdorffScatter
   have : LinOrd.mk { x_1 // x < x_1 ∧ x_1 ≤ y ∨ y < x_1 ∧ x_1 ≤ x }
          = LinOrd.mk { x_1 // y < x_1 ∧ x_1 ≤ x ∨ x < x_1 ∧ x_1 ≤ y } := by
     simp only [LinOrd.mk.injEq, this, true_and]
-    exact LinearOrder_subtype_HEq this
+    exact linOrd_subtype_HEq this
   simpa only [Set.coe_setOf, this] using h
 
 /-- hausdorffScattered_rel is an equivalence relation -/
@@ -711,7 +711,7 @@ theorem hausdorff_scattered_orders (X : LinOrd): Scattered X ↔ HausdorffScatte
             exact lt_of_le_of_lt hc2 ha1
 
       rcases Order.embedding_from_countable_to_dense ℚ reps with ⟨f1⟩
-      apply Nonempty.intro (OrderEmbedding_comp f1 (coeEmb reps))
+      apply Nonempty.intro (OrderEmbedding_comp f1 (Set.coeEmb reps))
 
 -- RIGHT TO LEFT
   · intro X_scat_prop
