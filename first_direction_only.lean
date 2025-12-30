@@ -2,6 +2,7 @@
 -- the proof of Hausdorff's theorem.
 -- There are a few sorrys (mainly) due to type problems
 
+
 import Mathlib.Tactic
 import Mathlib.Order.CountableDenseLinearOrder
 import Mathlib.Order.Category.LinOrd
@@ -10,7 +11,6 @@ import Mathlib.Data.Sigma.Lex
 import Mathlib.Order.Basic
 import Mathlib.Logic.Basic
 import Batteries.Logic
-import Hausdorff.WO_cofinal_subset
 
 open Classical
 
@@ -151,6 +151,11 @@ inductive Scattered_ind_prop : LinOrd → Prop
                   (h : ∀ w, Scattered_ind_prop (f w))
                   (L : LinOrd)
                   (h : L ≃o ({carrier := Σₗ w, (f w).carrier, str := Sigma.Lex.linearOrder} : LinOrd)): Scattered_ind_prop L
+
+/-- every linear order has a well-founded cofinal subset -/
+lemma exists_cof_WF_subset  {α : Type*} [LinearOrder α]:
+  ∃ (A : Set α), IsCofinal A ∧ A.WellFoundedOn (· < ·) := by sorry -- proof in other file
+                                                                   -- how do you import local files?
 
 /-- a helper fxn for the next theorem: a lienar order α is well-ordered iff for any x, every set containing x is bounded below-/
 private lemma WO_iff_lem {α : Type*} [r : LinearOrder α]: IsWellFounded α r.lt ↔ ∀ x, ∀ A : Set α, x ∈ A → ∃ lb ∈ A, ∀ a ∈ A, r.le lb a := by

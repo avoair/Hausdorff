@@ -1,7 +1,11 @@
-Main theorem: the set of scattered orders (those which do not contain a copy of the rationals) is equal to the smallest set of linear orders containing every singleton order and that is closed under well-ordered and reverse well-ordered lexicographic sums
+# Hausdorff
+## In Progress
+- potentially reducing logical redundancty between Two_iso_helper and iso_of_sigma_partition
 
-*WellOrderedCofinalSubset.lean* contains the lemma that every linear order has a well-ordered cofinal subset, as well as other basic lemmas about well orders.
-
-*Scattered.lean* contains shorter lemmas about the traditional definition of a scattered order.
-
-*Isomoprhisms.lean* contains mainly logistical lemmas about order isomoprhisms and embeddings.
+## Complete
+- shortened proofs throughout
+- updated naming in Hausdorff.lean 
+- updated all files **except** Hausdorff.lean to comply with the style guide
+- Scattered order definition changed to rational embedding definition
+- Proofs throughout modified to rely only on embedding definition of scattered
+- Completed documentation throughout all files
